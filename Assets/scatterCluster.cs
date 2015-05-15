@@ -6,6 +6,7 @@ public class scatterCluster : MonoBehaviour {
 	public Transform fragment;
 	public Transform redCube;
 	public Transform wall;
+	public Transform character;
 	public Material right;
 	public Material wrong;
 	public int fragCount;
@@ -13,6 +14,7 @@ public class scatterCluster : MonoBehaviour {
 
 	private Transform[] cluster;
 	private Transform redCube1, redCube2;
+	private Vector3 lastPos;
 
 	// Use this for initialization
 	void Start ()
@@ -20,6 +22,7 @@ public class scatterCluster : MonoBehaviour {
 		Random.seed = (int)System.DateTime.Now.Ticks;
 
 		cluster = new Transform[fragCount];
+		lastPos = Vector3.zero;
 
 		resetCluster ();
 	}
@@ -58,6 +61,12 @@ public class scatterCluster : MonoBehaviour {
 	// Update is called once per frame
 	void Update ()
 	{
+		if (lastPos != Vector3.zero && lastPos != character.position)
+		{
+			Debug.DrawLine(lastPos + 5*Vector3.back, character.position + 5*Vector3.back, Color.yellow, 100);
+		}
+		lastPos = character.position;
+
 		if (Input.GetKeyDown ("left")) 
 		{
 			if(redCube1.position.z <= redCube2.position.z)
