@@ -62,6 +62,8 @@ public class OVRCameraRig : MonoBehaviour
 	/// Occurs when the eye pose anchors have been set.
 	/// </summary>
 	public event System.Action<OVRCameraRig> UpdatedAnchors;
+	public bool disablePositionTracking;
+	public bool disableOrietationTracking;
 
 	private bool needsCameraConfigure;
 	private readonly string trackingSpaceName = "TrackingSpace";
@@ -126,13 +128,34 @@ public class OVRCameraRig : MonoBehaviour
 
 		trackerAnchor.localRotation = tracker.orientation;
 		centerEyeAnchor.localRotation = hmdLeftEye.orientation; // using left eye for now
-		leftEyeAnchor.localRotation = monoscopic ? centerEyeAnchor.localRotation : hmdLeftEye.orientation;
-		rightEyeAnchor.localRotation = monoscopic ? centerEyeAnchor.localRotation : hmdRightEye.orientation;
+		if (disableOrietationTracking)
+		{
+			leftEyeAnchor.localRotation = Quaternion.identity;
+			rightEyeAnchor.localRotation = Quaternion.identity;
+		}
+		else
+		{
+			leftEyeAnchor.localRotation = monoscopic ? centerEyeAnchor.localRotation : hmdLeftEye.orientation;
+			rightEyeAnchor.localRotation = monoscopic ? centerEyeAnchor.localRotation : hmdRightEye.orientation;
+		}
 
 		trackerAnchor.localPosition = tracker.position;
 		centerEyeAnchor.localPosition = 0.5f * (hmdLeftEye.position + hmdRightEye.position);
-		leftEyeAnchor.localPosition = monoscopic ? centerEyeAnchor.localPosition : hmdLeftEye.position;
-		rightEyeAnchor.localPosition = monoscopic ? centerEyeAnchor.localPosition : hmdRightEye.position;
+		if (disablePositionTracking && disableOrietationTracking)
+		{
+			leftEyeAnchor.localPosition = Quaternion.Inverse(centerEyeAnchor.localRotation) * (hmdLeftEye.position - hmdRightEye.position) * 0.5f;
+			rightEyeAnchor.localPosition = - leftEyeAnchor.localPosition;
+		}
+		else if (disablePositionTracking)
+		{
+			leftEyeAnchor.localPosition = 0.5f * (hmdLeftEye.position - hmdRightEye.position);
+			rightEyeAnchor.localPosition = 0.5f * (hmdRightEye.position - hmdLeftEye.position);
+		}
+		else
+		{
+			leftEyeAnchor.localPosition = monoscopic ? centerEyeAnchor.localPosition : hmdLeftEye.position;
+			rightEyeAnchor.localPosition = monoscopic ? centerEyeAnchor.localPosition : hmdRightEye.position;
+		}
 
 		if (UpdatedAnchors != null)
 		{
