@@ -62,7 +62,7 @@ public class OVRCameraRig : MonoBehaviour
 	/// Occurs when the eye pose anchors have been set.
 	/// </summary>
 	public event System.Action<OVRCameraRig> UpdatedAnchors;
-	public bool disablePositionTracking;
+	public static bool disablePositionTracking;
 	public bool disableOrietationTracking;
 
 	private bool needsCameraConfigure;
