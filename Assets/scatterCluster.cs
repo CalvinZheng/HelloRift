@@ -68,6 +68,12 @@ public class scatterCluster : MonoBehaviour {
 			size = true;
 		}
 
+		stereo = true;
+		montion = true;
+		density = true;
+		tunneling = false;
+		size = false;
+
 		text.text = (stereo?"stereo,":"")+(montion?"montion,":"")+(density?"density,":"")+(tunneling?"tunneling,":"")+(size?"size,":"");
 
 		OVRManager.instance.monoscopic = stereo;
@@ -80,8 +86,11 @@ public class scatterCluster : MonoBehaviour {
 		}
 		redCube1 = Instantiate (redCube) as Transform;
 		redCube1.gameObject.SetActive (true);
-		redCube1.position = new Vector3 (-Random.value * 5, Random.value * 10, Random.value * 10);
-		redCube1.localScale *= redCube1.position.z / 10 + 1;
+		redCube1.position = new Vector3 (-Random.value*maxHeight/2, Random.value*maxHeight, Random.value*maxHeight);
+		if (size)
+		{
+			redCube1.localScale *= redCube1.position.z / 10 + 1;
+		}
 		
 		if (redCube2 != null)
 		{
@@ -89,8 +98,11 @@ public class scatterCluster : MonoBehaviour {
 		}
 		redCube2 = Instantiate (redCube) as Transform;
 		redCube2.gameObject.SetActive (true);
-		redCube2.position = new Vector3 (Random.value * 5, Random.value * 10, Random.value * 10);
-		redCube2.localScale *= redCube2.position.z / 10 + 1;
+		redCube2.position = new Vector3 (Random.value*maxHeight/2, Random.value*maxHeight, Random.value*maxHeight);
+		if (size)
+		{
+			redCube2.localScale *= redCube2.position.z / 10 + 1;
+		}
 
 		for (int i = 0; i < fragCount; i++)
 		{
@@ -106,7 +118,7 @@ public class scatterCluster : MonoBehaviour {
 			cluster[i].gameObject.SetActive(true);
 			while(true)
 			{
-				cluster[i].position = new Vector3(Random.value*maxHeight-maxHeight/2, Random.value*maxHeight, Random.value*10);
+				cluster[i].position = new Vector3(Random.value*maxHeight-maxHeight/2, Random.value*maxHeight, Random.value*maxHeight);
 				if (!tunneling)
 					break;
 
