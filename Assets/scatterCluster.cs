@@ -1,6 +1,7 @@
 ﻿using UnityEngine;
 using UnityEngine.UI;
 using System.Collections;
+using System.IO;
 
 public class scatterCluster : MonoBehaviour {
 
@@ -12,13 +13,16 @@ public class scatterCluster : MonoBehaviour {
 	public float tunnelWidth;
 	public GameObject statusDisplay;
 	public GameObject feedbackDisplay;
+	public GameObject distanceDisplay;
 	public Material transparentMat;
 	public Light lightSource;
+	public bool continousMode;
 
 	private Transform[] cluster;
 	private Transform redCube1, redCube2;
 	private Vector3 lastPos;
 	private bool stereo, montion, density, tunneling, size, transparent, PLC;
+	private StreamWriter fileWriter;
 
 	// Use this for initialization
 	void Start ()
@@ -27,6 +31,8 @@ public class scatterCluster : MonoBehaviour {
 
 		cluster = new Transform[fragCount];
 		lastPos = Vector3.zero;
+		System.IO.Directory.CreateDirectory("output");
+		fileWriter = File.CreateText(string.Format("output/output-{0:r}.txt", System.DateTime.Now));
 		
 		stereo = true;
 		montion = true;
@@ -95,13 +101,15 @@ public class scatterCluster : MonoBehaviour {
 		}
 		int realFragCount = density ? fragCount : fragCount / 5;
 
+		bool leftFirst = Random.value > 0.5;
+
 		if (redCube1 != null)
 		{
 			Destroy(redCube1.gameObject);
 		}
 		redCube1 = Instantiate (redCube) as Transform;
 		redCube1.gameObject.SetActive (true);
-		redCube1.position = new Vector3 (-Random.value*maxHeight/2, Random.value*maxHeight, Random.value*maxHeight);
+		redCube1.position = new Vector3 (-maxHeight/4, Random.value*maxHeight, Random.value*maxHeight/4+(leftFirst?0:maxHeight/2));
 
 		if (redCube2 != null)
 		{
@@ -109,7 +117,7 @@ public class scatterCluster : MonoBehaviour {
 		}
 		redCube2 = Instantiate (redCube) as Transform;
 		redCube2.gameObject.SetActive (true);
-		redCube2.position = new Vector3 (Random.value*maxHeight/2, Random.value*maxHeight, Random.value*maxHeight);
+		redCube2.position = new Vector3 (maxHeight/4, Random.value*maxHeight, Random.value*maxHeight/4+(!leftFirst?0:maxHeight/2));
 
 		for (int i = 0; i < fragCount; i++)
 		{
@@ -145,7 +153,7 @@ public class scatterCluster : MonoBehaviour {
 				float alpha = transparent ? 0.4f : 1;
 				if (transparent)
 					cluster[i].GetComponent<Renderer>().material = transparentMat;
-				cluster[i].GetComponent<Renderer>().material.color = new Color(greyScale, greyScale, greyScale, 0.4F);
+				cluster[i].GetComponent<Renderer>().material.color = new Color(greyScale, greyScale, greyScale, alpha);
 			}
 		}
 	}
@@ -184,7 +192,7 @@ public class scatterCluster : MonoBehaviour {
 			}
 		}
 
-		if (Input.GetKeyDown ("left")) 
+		if (!continousMode && Input.GetKeyDown ("left")) 
 		{
 			if(redCube1.position.z <= redCube2.position.z)
 			{
@@ -197,7 +205,7 @@ public class scatterCluster : MonoBehaviour {
 
 			resetCluster();
 		}
-		else if (Input.GetKeyDown("right"))
+		else if (!continousMode && Input.GetKeyDown("right"))
 		{
 			if(redCube1.position.z >= redCube2.position.z)
 			{
@@ -209,6 +217,26 @@ public class scatterCluster : MonoBehaviour {
 			}
 
 			resetCluster();
+		}
+		else if (continousMode && Input.GetKey("up"))
+		{
+			redCube1.position -= Vector3.forward*maxHeight*0.001f;
+			redCube2.position += Vector3.forward*maxHeight*0.001f;
+		}
+		else if (continousMode && Input.GetKey("down"))
+		{
+			redCube1.position += Vector3.forward*maxHeight*0.001f;
+			redCube2.position -= Vector3.forward*maxHeight*0.001f;
+		}
+		else if (continousMode && Input.GetKeyDown("space"))
+		{
+			fileWriter.WriteLine("{0}", (redCube1.position.z-redCube2.position.z)*1000);
+			resetCluster();
+		}
+		else if (Input.GetKeyDown("escape"))
+		{
+			fileWriter.Close();
+			Application.Quit();
 		}
 		else if (Input.GetKeyDown("1"))
 		{

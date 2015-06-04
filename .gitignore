@@ -62,3 +62,6 @@ ExportedObj/
 *.user
 *.unityproj
 *.booproj
+
+# Rift
+output
