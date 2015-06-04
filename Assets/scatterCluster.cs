@@ -6,19 +6,19 @@ public class scatterCluster : MonoBehaviour {
 
 	public Transform fragment;
 	public Transform redCube;
-	public Transform display;
-	public Transform display2;
 	public Transform character;
-	public Material right;
-	public Material wrong;
 	public int fragCount;
 	public float maxHeight;
 	public float tunnelWidth;
-	public Text text;
+	public GameObject statusDisplay;
+	public GameObject feedbackDisplay;
+	public Material transparentMat;
+	public Light lightSource;
 
 	private Transform[] cluster;
 	private Transform redCube1, redCube2;
 	private Vector3 lastPos;
+	private bool stereo, montion, density, tunneling, size, transparent, PLC;
 
 	// Use this for initialization
 	void Start ()
@@ -27,57 +27,72 @@ public class scatterCluster : MonoBehaviour {
 
 		cluster = new Transform[fragCount];
 		lastPos = Vector3.zero;
+		
+		stereo = true;
+		montion = true;
+		density = true;
+		tunneling = true;
+		size = true;
+		transparent = false;
+		PLC = false;
 
 		resetCluster ();
 	}
 
 	void resetCluster()
 	{
-		bool stereo, montion, density, tunneling, size;
-		float rand = Random.value;
-		if (rand < 1.0/13)
+//		float rand = Random.value;
+//		if (rand < 1.0/13)
+//		{
+//			stereo = false;
+//			montion = false;
+//			density = false;
+//			tunneling = false;
+//			size = false;
+//		}
+//		else if (rand < 5.0/13)
+//		{
+//			stereo = Random.value > 0.5;
+//			montion = Random.value > 0.5;
+//			density = false;
+//			tunneling = false;
+//			size = true;
+//		}
+//		else if (rand < 9.0/13)
+//		{
+//			stereo = Random.value > 0.5;
+//			montion = Random.value > 0.5;
+//			density = true;
+//			tunneling = false;
+//			size = true;
+//		}
+//		else
+//		{
+//			stereo = Random.value > 0.5;
+//			montion = Random.value > 0.5;
+//			density = true;
+//			tunneling = true;
+//			size = true;
+//		}
+
+		statusDisplay.GetComponent<TextMesh>().text = 
+			(stereo?"stereo,":"")+(montion?"montion,":"")+(density?"density,":"")+(tunneling?"tunneling,":"")+(size?"size,":"")+(transparent?"transparent,":"")+(PLC?"PLC":"");
+
+		//OVRManager.instance.monoscopic = stereo;
+		//OVRCameraRig.disablePositionTracking = !montion;
+		if (PLC)
 		{
-			stereo = false;
-			montion = false;
-			density = false;
-			tunneling = false;
-			size = false;
-		}
-		else if (rand < 5.0/13)
-		{
-			stereo = Random.value > 0.5;
-			montion = Random.value > 0.5;
-			density = false;
-			tunneling = false;
-			size = true;
-		}
-		else if (rand < 9.0/13)
-		{
-			stereo = Random.value > 0.5;
-			montion = Random.value > 0.5;
-			density = true;
-			tunneling = false;
-			size = true;
+			RenderSettings.ambientMode = UnityEngine.Rendering.AmbientMode.Flat;
+			RenderSettings.ambientSkyColor = Color.white;
+			RenderSettings.defaultReflectionMode = UnityEngine.Rendering.DefaultReflectionMode.Custom;
+			lightSource.enabled = false;
 		}
 		else
 		{
-			stereo = Random.value > 0.5;
-			montion = Random.value > 0.5;
-			density = true;
-			tunneling = true;
-			size = true;
+			RenderSettings.ambientMode = UnityEngine.Rendering.AmbientMode.Skybox;
+			RenderSettings.defaultReflectionMode = UnityEngine.Rendering.DefaultReflectionMode.Skybox;
+			lightSource.enabled = true;
 		}
-
-		stereo = true;
-		montion = true;
-		density = true;
-		tunneling = false;
-		size = false;
-
-		text.text = (stereo?"stereo,":"")+(montion?"montion,":"")+(density?"density,":"")+(tunneling?"tunneling,":"")+(size?"size,":"");
-
-		OVRManager.instance.monoscopic = stereo;
-		OVRCameraRig.disablePositionTracking = !montion;
 		int realFragCount = density ? fragCount : fragCount / 5;
 
 		if (redCube1 != null)
@@ -87,11 +102,7 @@ public class scatterCluster : MonoBehaviour {
 		redCube1 = Instantiate (redCube) as Transform;
 		redCube1.gameObject.SetActive (true);
 		redCube1.position = new Vector3 (-Random.value*maxHeight/2, Random.value*maxHeight, Random.value*maxHeight);
-		if (size)
-		{
-			redCube1.localScale *= redCube1.position.z / 10 + 1;
-		}
-		
+
 		if (redCube2 != null)
 		{
 			Destroy(redCube2.gameObject);
@@ -99,10 +110,6 @@ public class scatterCluster : MonoBehaviour {
 		redCube2 = Instantiate (redCube) as Transform;
 		redCube2.gameObject.SetActive (true);
 		redCube2.position = new Vector3 (Random.value*maxHeight/2, Random.value*maxHeight, Random.value*maxHeight);
-		if (size)
-		{
-			redCube2.localScale *= redCube2.position.z / 10 + 1;
-		}
 
 		for (int i = 0; i < fragCount; i++)
 		{
@@ -131,11 +138,15 @@ public class scatterCluster : MonoBehaviour {
 				    && (fragV.magnitude > cube2V.magnitude+tunnelWidth || dist2 > tunnelWidth))
 					break;
 			}
-			if (size)
-			{
-				cluster[i].localScale *= cluster[i].position.z / 10 + 1;
-			}
 			cluster[i].rotation = Random.rotation;
+			if (PLC || transparent)
+			{
+				float greyScale = PLC ? 1-cluster[i].position.z/maxHeight : 1;
+				float alpha = transparent ? 0.4f : 1;
+				if (transparent)
+					cluster[i].GetComponent<Renderer>().material = transparentMat;
+				cluster[i].GetComponent<Renderer>().material.color = new Color(greyScale, greyScale, greyScale, 0.4F);
+			}
 		}
 	}
 	
@@ -148,17 +159,40 @@ public class scatterCluster : MonoBehaviour {
 		}
 		lastPos = character.position;
 
+		if (size)
+		{
+			redCube1.localScale = redCube.localScale * (character.position.z - redCube1.position.z) / character.position.z;
+			redCube2.localScale = redCube.localScale * (character.position.z - redCube2.position.z) / character.position.z;
+			for (int i = 0; i < fragCount; i++)
+			{
+				if (cluster[i] != null)
+				{
+					cluster[i].localScale = fragment.localScale * (character.position.z - cluster[i].position.z) / character.position.z;
+				}
+			}
+		}
+		else
+		{
+			redCube1.localScale = redCube.localScale;
+			redCube2.localScale = redCube.localScale;
+			for (int i = 0; i < fragCount; i++)
+			{
+				if (cluster[i] != null)
+				{
+					cluster[i].localScale = fragment.localScale;
+				}
+			}
+		}
+
 		if (Input.GetKeyDown ("left")) 
 		{
 			if(redCube1.position.z <= redCube2.position.z)
 			{
-				display.gameObject.GetComponent<Renderer>().material = right;
-				display2.gameObject.GetComponent<Renderer>().material = right;
+				feedbackDisplay.GetComponent<TextMesh>().text = "Correct!";
 			}
 			else
 			{
-				display.gameObject.GetComponent<Renderer>().material = wrong;
-				display2.gameObject.GetComponent<Renderer>().material = wrong;
+				feedbackDisplay.GetComponent<TextMesh>().text = "Wrong!";
 			}
 
 			resetCluster();
@@ -167,16 +201,54 @@ public class scatterCluster : MonoBehaviour {
 		{
 			if(redCube1.position.z >= redCube2.position.z)
 			{
-				display.gameObject.GetComponent<Renderer>().material = right;
-				display2.gameObject.GetComponent<Renderer>().material = right;
+				feedbackDisplay.GetComponent<TextMesh>().text = "Correct!";
 			}
 			else
 			{
-				display.gameObject.GetComponent<Renderer>().material = wrong;
-				display2.gameObject.GetComponent<Renderer>().material = wrong;
+				feedbackDisplay.GetComponent<TextMesh>().text = "Wrong!";
 			}
 
 			resetCluster();
 		}
+		else if (Input.GetKeyDown("1"))
+		{
+			stereo = !stereo;
+			resetCluster();
+		}
+		else if (Input.GetKeyDown("2"))
+		{
+			montion = !montion;
+			resetCluster();
+		}
+		else if (Input.GetKeyDown("3"))
+		{
+			density = !density;
+			resetCluster();
+		}
+		else if (Input.GetKeyDown("4"))
+		{
+			tunneling = !tunneling;
+			resetCluster();
+		}
+		else if (Input.GetKeyDown("5"))
+		{
+			size = !size;
+			resetCluster();
+		}
+		else if (Input.GetKeyDown("6"))
+		{
+			transparent = !transparent;
+			resetCluster();
+		}
+		else if (Input.GetKeyDown("7"))
+		{
+			PLC = !PLC;
+			resetCluster();
+		}
+	}
+
+	void copyMaterial(GameObject anObject)
+	{
+		anObject.GetComponent<Renderer>().material = new Material (anObject.GetComponent<Renderer>().material);
 	}
 }
