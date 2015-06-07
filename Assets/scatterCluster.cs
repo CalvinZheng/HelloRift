@@ -23,6 +23,8 @@ public class scatterCluster : MonoBehaviour {
 	private Vector3 lastPos;
 	private bool stereo, montion, density, tunneling, size, transparent, PLC;
 	private StreamWriter fileWriter;
+	private float currentDistance;
+	private int errorCount;
 
 	// Use this for initialization
 	void Start ()
@@ -33,6 +35,14 @@ public class scatterCluster : MonoBehaviour {
 		lastPos = Vector3.zero;
 		System.IO.Directory.CreateDirectory("output");
 		fileWriter = File.CreateText(string.Format("output/output-{0:r}.txt", System.DateTime.Now));
+		if (continousMode)
+		{
+			fileWriter.WriteLine("This is continues mode.");
+		}
+		else
+		{
+			fileWriter.WriteLine("This is staircase mode.");
+		}
 		
 		stereo = true;
 		montion = true;
@@ -41,6 +51,9 @@ public class scatterCluster : MonoBehaviour {
 		size = true;
 		transparent = false;
 		PLC = false;
+
+		currentDistance = maxHeight * 0.8f;
+		errorCount = 0;
 
 		resetCluster ();
 	}
@@ -109,7 +122,9 @@ public class scatterCluster : MonoBehaviour {
 		}
 		redCube1 = Instantiate (redCube) as Transform;
 		redCube1.gameObject.SetActive (true);
-		redCube1.position = new Vector3 (-maxHeight/4, Random.value*maxHeight, Random.value*maxHeight/4+(leftFirst?0:maxHeight/2));
+		redCube1.position = new Vector3 (-maxHeight/4 + (Random.value-0.5f)*maxHeight/3,
+		                                 Random.value*maxHeight,
+		                                 continousMode ? Random.value*maxHeight/4+(leftFirst?0:maxHeight*3/4) : maxHeight/2+(leftFirst?1:-1)*currentDistance/2);
 
 		if (redCube2 != null)
 		{
@@ -117,7 +132,9 @@ public class scatterCluster : MonoBehaviour {
 		}
 		redCube2 = Instantiate (redCube) as Transform;
 		redCube2.gameObject.SetActive (true);
-		redCube2.position = new Vector3 (maxHeight/4, Random.value*maxHeight, Random.value*maxHeight/4+(!leftFirst?0:maxHeight/2));
+		redCube2.position = new Vector3 (maxHeight/4 + (Random.value-0.5f)*maxHeight/3,
+		                                 Random.value*maxHeight,
+		                                 continousMode ? Random.value*maxHeight/4+(!leftFirst?0:maxHeight*3/4) : maxHeight/2+(!leftFirst?1:-1)*currentDistance/2);
 
 		for (int i = 0; i < fragCount; i++)
 		{
@@ -197,11 +214,16 @@ public class scatterCluster : MonoBehaviour {
 			if(redCube1.position.z <= redCube2.position.z)
 			{
 				feedbackDisplay.GetComponent<TextMesh>().text = "Correct!";
+				currentDistance *= 0.78f;
 			}
 			else
 			{
 				feedbackDisplay.GetComponent<TextMesh>().text = "Wrong!";
+				currentDistance /= 0.78f;
+				errorCount++;
 			}
+
+			checkStaircase();
 
 			resetCluster();
 		}
@@ -210,11 +232,16 @@ public class scatterCluster : MonoBehaviour {
 			if(redCube1.position.z >= redCube2.position.z)
 			{
 				feedbackDisplay.GetComponent<TextMesh>().text = "Correct!";
+				currentDistance *= 0.78f;
 			}
 			else
 			{
 				feedbackDisplay.GetComponent<TextMesh>().text = "Wrong!";
+				currentDistance /= 0.78f;
+				errorCount++;
 			}
+
+			checkStaircase();
 
 			resetCluster();
 		}
@@ -272,6 +299,18 @@ public class scatterCluster : MonoBehaviour {
 		{
 			PLC = !PLC;
 			resetCluster();
+		}
+
+		distanceDisplay.GetComponent<TextMesh> ().text = string.Format ("{0}", currentDistance);
+	}
+
+	void checkStaircase()
+	{
+		if (errorCount > 15)
+		{
+			fileWriter.WriteLine("{0}", currentDistance);
+			currentDistance = maxHeight * 0.8f;
+			errorCount = 0;
 		}
 	}
 
