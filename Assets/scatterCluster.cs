@@ -8,6 +8,7 @@ public class scatterCluster : MonoBehaviour {
 	public Transform fragment;
 	public Transform redCube;
 	public Transform character;
+	public Transform monitorCube;
 	public int fragCount;
 	public float maxHeight;
 	public float tunnelWidth;
@@ -34,7 +35,7 @@ public class scatterCluster : MonoBehaviour {
 		cluster = new Transform[fragCount];
 		lastPos = Vector3.zero;
 		System.IO.Directory.CreateDirectory("output");
-		fileWriter = File.CreateText(string.Format("output/output-{0:r}.txt", System.DateTime.Now));
+		fileWriter = File.CreateText(string.Format("output/output-{0}.txt", System.DateTime.Now.ToString("yyyy-MMM-dd-HH-mm-ss")));
 		if (continousMode)
 		{
 			fileWriter.WriteLine("This is continues mode.");
@@ -97,8 +98,8 @@ public class scatterCluster : MonoBehaviour {
 		statusDisplay.GetComponent<TextMesh>().text = 
 			(stereo?"stereo,":"")+(montion?"montion,":"")+(density?"density,":"")+(tunneling?"tunneling,":"")+(size?"size,":"")+(transparent?"transparent,":"")+(PLC?"PLC":"");
 
-		//OVRManager.instance.monoscopic = stereo;
-		//OVRCameraRig.disablePositionTracking = !montion;
+		OVRManager.instance.monoscopic = !stereo;
+		OVRCameraRig.disablePositionTracking = !montion;
 		if (PLC)
 		{
 			RenderSettings.ambientMode = UnityEngine.Rendering.AmbientMode.Flat;
@@ -263,7 +264,7 @@ public class scatterCluster : MonoBehaviour {
 		else if (Input.GetKeyDown("escape"))
 		{
 			fileWriter.Close();
-			Application.Quit();
+			//Application.Quit();
 		}
 		else if (Input.GetKeyDown("1"))
 		{
@@ -299,6 +300,14 @@ public class scatterCluster : MonoBehaviour {
 		{
 			PLC = !PLC;
 			resetCluster();
+		}
+		else if (Input.GetKeyDown(KeyCode.LeftControl))
+		{
+			OVRManager.display.RecenterPose();
+		}
+		else if (Input.GetKeyDown(KeyCode.RightControl))
+		{
+			monitorCube.GetComponent<Renderer>().enabled = !monitorCube.GetComponent<Renderer>().enabled;
 		}
 
 		distanceDisplay.GetComponent<TextMesh> ().text = string.Format ("{0}", currentDistance);
