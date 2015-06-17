@@ -150,6 +150,7 @@ public class OVRCameraRig : MonoBehaviour
 		{
 			leftEyeAnchor.localPosition = 0.5f * (hmdLeftEye.position - hmdRightEye.position);
 			rightEyeAnchor.localPosition = 0.5f * (hmdRightEye.position - hmdLeftEye.position);
+			centerEyeAnchor.localPosition = Vector3.zero;
 		}
 		else
 		{

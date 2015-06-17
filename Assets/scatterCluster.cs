@@ -300,7 +300,7 @@ public class scatterCluster : MonoBehaviour {
 			montion = currentStaircase.montion;
 			density = currentStaircase.density;
 			tunneling = false;
-			size = true;
+			size = false;
 			transparent = false;
 			uniform = currentStaircase.uniform;
 			PLC = currentStaircase.PLC;
@@ -310,10 +310,10 @@ public class scatterCluster : MonoBehaviour {
 		}
 
 		statusDisplay.GetComponent<TextMesh>().text = 
-			(stereo?"stereo,":"")+(montion?"montion,":"")+(density?"density,":"")+(tunneling?"tunneling,":"")+(size?"size,":"")+(transparent?"transparent,":"")+(uniform?"uniform,":"")+(PLC?"PLC":"");
+			(stereo?"stereo,":"")+(montion?"montion,":"")+(density?"density,":"")+(uniform?"uniform,":"")+(PLC?"PLC":"");
 
-		//OVRManager.instance.monoscopic = !stereo;
-		//OVRCameraRig.disablePositionTracking = !montion;
+		OVRManager.instance.monoscopic = !stereo;
+		OVRCameraRig.disablePositionTracking = !montion;
 		if (PLC || uniform)
 		{
 			RenderSettings.ambientMode = UnityEngine.Rendering.AmbientMode.Flat;
@@ -400,13 +400,13 @@ public class scatterCluster : MonoBehaviour {
 
 		if (size)
 		{
-			redCube1.localScale = redCube.localScale * (character.position.z - redCube1.position.z) / character.position.z;
-			redCube2.localScale = redCube.localScale * (character.position.z - redCube2.position.z) / character.position.z;
+			redCube1.localScale = redCube.localScale * (character.position.z - redCube1.position.z) / (character.position.z - maxHeight/2);
+			redCube2.localScale = redCube.localScale * (character.position.z - redCube2.position.z) / (character.position.z - maxHeight/2);
 			for (int i = 0; i < fragCount; i++)
 			{
 				if (cluster[i] != null)
 				{
-					cluster[i].localScale = fragment.localScale * (character.position.z - cluster[i].position.z) / character.position.z;
+					cluster[i].localScale = fragment.localScale * (character.position.z - cluster[i].position.z) / (character.position.z - maxHeight/2);
 				}
 			}
 		}
@@ -548,7 +548,7 @@ public class scatterCluster : MonoBehaviour {
 		}
 		else if (Input.GetKeyDown(KeyCode.LeftControl))
 		{
-			//OVRManager.display.RecenterPose();
+			OVRManager.display.RecenterPose();
 		}
 		else if (Input.GetKeyDown(KeyCode.RightControl))
 		{
