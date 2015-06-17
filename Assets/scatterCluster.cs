@@ -17,9 +17,9 @@ public class StairCase
 	public int currentStep;
 	public StreamWriter fileWriter;
 
-	static int reversalMax = 14;
+	static int reversalMax = 10;
 	static float stepDownRatio = 0.8f;
-	static int finalResultCount = 10;
+	static int finalResultCount = 5;
 
 	private bool lastFeedback;
 
@@ -218,7 +218,7 @@ public class scatterCluster : MonoBehaviour {
 		for (int i = 0; i < 24; i++)
 		{
 			staircases [i] = new StairCase (i%2==1, i/2%2==1, i/4%2==1, i/8==1, i/8==2);
-			staircases[i].results[0] = maxHeight * 0.5f;
+			staircases[i].results[0] = maxHeight * 0.8f;
 			staircases[i].fileWriter = fileWriter;
 		}
 		currentStaircase = staircases [Random.Range (0, 24)];
@@ -343,7 +343,7 @@ public class scatterCluster : MonoBehaviour {
 		redCube1 = Instantiate (redCube) as Transform;
 		redCube1.gameObject.SetActive (true);
 		redCube1.position = new Vector3 (-maxHeight/4 + (Random.value-0.5f)*maxHeight/3,
-		                                 maxHeight/2+(Random.value-0.5f)*maxHeight/3*2,
+		                                 Random.value*maxHeight,
 		                                 maxHeight/2+(leftFirst?1:-1)*currentDistance/2);
 
 		if (redCube2 != null)
