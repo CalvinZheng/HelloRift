@@ -12,13 +12,14 @@ public class StairCase
 	public bool PLC;
 	public int reversalCount;
 	public float[] results;
+	public float[] reversalResults;
 	public float finalResult;
 	public int currentStep;
 	public StreamWriter fileWriter;
 
-	static int reversalMax = 14;
+	static int reversalMax = 10;
 	static float stepDownRatio = 0.8f;
-	static int finalResultCount = 6;
+	static int finalResultCount = 5;
 
 	private bool lastFeedback;
 
@@ -43,6 +44,7 @@ public class StairCase
 		reversalCount = 0;
 		finalResult = -1;
 		currentStep = 0;
+		reversalResults = new float[reversalMax];
 	}
 
 	public float currentDistance()
@@ -65,6 +67,7 @@ public class StairCase
 
 		if (currentStep > 0 && lastFeedback != false)
 		{
+			reversalResults[reversalCount] = results[currentStep];
 			reversalCount++;
 		}
 
@@ -93,6 +96,7 @@ public class StairCase
 		
 		if (currentStep > 0 && lastFeedback != true)
 		{
+			reversalResults[reversalCount] = results[currentStep];
 			reversalCount++;
 		}
 
@@ -122,13 +126,14 @@ public class StairCase
 			}
 			finalResult /= finalResultCount;
 
-			fileWriter.WriteLine((stereo?"stereo,":"")+(montion?"montion,":"")+(density?"density,":"")+(uniform?"uniform,":"")+(PLC?"PLC":""));
+			string label = "("+(stereo?"s+":"")+(montion?"m+":"")+(density?"d+":"")+(uniform?"u+":"")+(PLC?"P":"")+")";
+			fileWriter.Write(label+",");
 			for (int i = 0; i <= currentStep; i++)
 			{
 				fileWriter.Write("{0},", results[i]);
 			}
 			fileWriter.Write("\n");
-			fileWriter.WriteLine("Final result:, {0}", finalResult);
+			fileWriter.WriteLine(label+",{0}", finalResult);
 
 			Debug.Log("One experiment done!");
 		}
@@ -314,19 +319,19 @@ public class scatterCluster : MonoBehaviour {
 
 		OVRManager.instance.monoscopic = !stereo;
 		OVRCameraRig.disablePositionTracking = !montion;
-		if (PLC || uniform)
-		{
-			RenderSettings.ambientMode = UnityEngine.Rendering.AmbientMode.Flat;
-			RenderSettings.ambientSkyColor = Color.white;
-			RenderSettings.defaultReflectionMode = UnityEngine.Rendering.DefaultReflectionMode.Custom;
-			lightSource.enabled = false;
-		}
-		else
-		{
-			RenderSettings.ambientMode = UnityEngine.Rendering.AmbientMode.Skybox;
-			RenderSettings.defaultReflectionMode = UnityEngine.Rendering.DefaultReflectionMode.Skybox;
-			lightSource.enabled = true;
-		}
+//		if (PLC || uniform)
+//		{
+//			RenderSettings.ambientMode = UnityEngine.Rendering.AmbientMode.Flat;
+//			RenderSettings.ambientSkyColor = Color.white;
+//			RenderSettings.defaultReflectionMode = UnityEngine.Rendering.DefaultReflectionMode.Custom;
+//			lightSource.enabled = false;
+//		}
+//		else
+//		{
+//			RenderSettings.ambientMode = UnityEngine.Rendering.AmbientMode.Skybox;
+//			RenderSettings.defaultReflectionMode = UnityEngine.Rendering.DefaultReflectionMode.Skybox;
+//			lightSource.enabled = true;
+//		}
 		int realFragCount = density ? 1131 : 64;
 
 		bool leftFirst = Random.value > 0.5;
@@ -382,6 +387,11 @@ public class scatterCluster : MonoBehaviour {
 			if (PLC || transparent)
 			{
 				float greyScale = PLC ? 1-cluster[i].position.z/maxHeight : 1;
+				cluster[i].GetComponent<Renderer>().material.color = new Color(greyScale, greyScale, greyScale, 1);
+			}
+			else if (!uniform)
+			{
+				float greyScale = Random.value;
 				cluster[i].GetComponent<Renderer>().material.color = new Color(greyScale, greyScale, greyScale, 1);
 			}
 		}
