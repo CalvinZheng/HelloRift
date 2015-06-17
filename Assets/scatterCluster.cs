@@ -17,9 +17,9 @@ public class StairCase
 	public int currentStep;
 	public StreamWriter fileWriter;
 
-	static int reversalMax = 10;
+	static int reversalMax = 14;
 	static float stepDownRatio = 0.8f;
-	static int finalResultCount = 5;
+	static int finalResultCount = 10;
 
 	private bool lastFeedback;
 
@@ -164,6 +164,7 @@ public class scatterCluster : MonoBehaviour {
 	public GameObject distanceDisplay;
 	public GameObject progressDisplay;
 	public GameObject completeDisplay;
+	public GameObject tipDisplay;
 	public Material transparentMat;
 	public Light lightSource;
 	public bool continousMode;
@@ -218,7 +219,7 @@ public class scatterCluster : MonoBehaviour {
 		for (int i = 0; i < 24; i++)
 		{
 			staircases [i] = new StairCase (i%2==1, i/2%2==1, i/4%2==1, i/8==1, i/8==2);
-			staircases[i].results[0] = maxHeight * 0.8f;
+			staircases[i].results[0] = maxHeight * 0.5f;
 			staircases[i].fileWriter = fileWriter;
 		}
 		currentStaircase = staircases [Random.Range (0, 24)];
@@ -261,19 +262,32 @@ public class scatterCluster : MonoBehaviour {
 		}
 		else
 		{
-			if ((System.DateTime.Now - restTimestamp).Minutes >= timeUntilRest)
-			{
-				restPeriod = true;
-				return;
-			}
-			else if (!checkIfAnyAvailable())
+//			if ((System.DateTime.Now - restTimestamp).Minutes >= timeUntilRest)
+//			{
+//				restPeriod = true;
+//				return;
+//			}
+
+			if (!checkIfAnyAvailable())
 			{
 				fileWriter.Close();
 				completed = true;
 				return;
 			}
 
-			if (blockCaseCount < blockCases && checkIfAvailableForSameBlock())
+			if (blockCaseCount == 0)
+			{
+				while(true)
+				{
+					int randIndex = Random.Range(0,24);
+					if (!staircases[randIndex].finished())
+					{
+						currentStaircase = staircases[randIndex];
+						break;
+					}
+				}
+			}
+			else if (blockCaseCount < blockCases && checkIfAvailableForSameBlock())
 			{
 				while(true)
 				{
@@ -290,15 +304,8 @@ public class scatterCluster : MonoBehaviour {
 			else
 			{
 				blockCaseCount = 0;
-				while(true)
-				{
-					int randIndex = Random.Range(0,24);
-					if (!staircases[randIndex].finished())
-					{
-						currentStaircase = staircases[randIndex];
-						break;
-					}
-				}
+				restPeriod = true;
+				return;
 			}
 
 			stereo = currentStaircase.stereo;
@@ -317,6 +324,7 @@ public class scatterCluster : MonoBehaviour {
 		statusDisplay.GetComponent<TextMesh>().text = 
 			(stereo?"stereo,":"")+(montion?"montion,":"")+(density?"density,":"")+(uniform?"uniform,":"")+(PLC?"PLC":"");
 
+		tipDisplay.SetActive (montion);
 		OVRManager.instance.monoscopic = !stereo;
 		OVRCameraRig.disablePositionTracking = !montion;
 //		if (PLC || uniform)
@@ -343,7 +351,7 @@ public class scatterCluster : MonoBehaviour {
 		redCube1 = Instantiate (redCube) as Transform;
 		redCube1.gameObject.SetActive (true);
 		redCube1.position = new Vector3 (-maxHeight/4 + (Random.value-0.5f)*maxHeight/3,
-		                                 Random.value*maxHeight,
+		                                 maxHeight/2 + (Random.value-0.5f)*maxHeight/3*2,
 		                                 maxHeight/2+(leftFirst?1:-1)*currentDistance/2);
 
 		if (redCube2 != null)
@@ -353,7 +361,7 @@ public class scatterCluster : MonoBehaviour {
 		redCube2 = Instantiate (redCube) as Transform;
 		redCube2.gameObject.SetActive (true);
 		redCube2.position = new Vector3 (maxHeight/4 + (Random.value-0.5f)*maxHeight/3,
-		                                 Random.value*maxHeight,
+		                                 maxHeight/2 + (Random.value-0.5f)*maxHeight/3*2,
 		                                 maxHeight/2+(!leftFirst?1:-1)*currentDistance/2);
 
 		for (int i = 0; i < fragCount; i++)
@@ -431,6 +439,11 @@ public class scatterCluster : MonoBehaviour {
 					cluster[i].localScale = fragment.localScale;
 				}
 			}
+		}
+		
+		if (Input.GetKeyDown(KeyCode.LeftControl))
+		{
+			OVRManager.display.RecenterPose();
 		}
 
 		if (completed)
@@ -555,10 +568,6 @@ public class scatterCluster : MonoBehaviour {
 		{
 			PLC = !PLC;
 			resetCluster();
-		}
-		else if (Input.GetKeyDown(KeyCode.LeftControl))
-		{
-			OVRManager.display.RecenterPose();
 		}
 		else if (Input.GetKeyDown(KeyCode.RightControl))
 		{
