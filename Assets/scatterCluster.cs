@@ -8,14 +8,13 @@ public class StairCase
 	public bool stereo;
 	public bool montion;
 	public bool density;
-	public bool uniform;
 	public bool PLC;
 	public int reversalCount;
 	public float[] results;
 	public float[] reversalResults;
 	public float finalResult;
 	public int currentStep;
-	public StreamWriter fileWriter;
+	public string filename;
 
 	static int reversalMax = 14;
 	static float stepDownRatio = 0.8f;
@@ -23,17 +22,11 @@ public class StairCase
 
 	private bool lastFeedback;
 
-	public StairCase(bool stereo, bool montion, bool density, bool uniform, bool PLC)
+	public StairCase(bool stereo, bool montion, bool density, bool PLC)
 	{
-		if (uniform && PLC)
-		{
-			Debug.Log("ERROR!");
-		}
-
 		this.stereo = stereo;
 		this.montion = montion;
 		this.density = density;
-		this.uniform = uniform;
 		this.PLC = PLC;
 
 		results = new float[500];
@@ -125,15 +118,21 @@ public class StairCase
 				finalResult += results[i];
 			}
 			finalResult /= finalResultCount;
-
-			string label = "("+(stereo?"s+":"")+(montion?"m+":"")+(density?"d+":"")+(uniform?"u+":"")+(PLC?"P":"")+")";
-			fileWriter.Write(label+",");
+			
+			StreamWriter sw = File.AppendText("output/staircase-"+filename);
+			string label = "("+(stereo?"s+":"")+(montion?"m+":"")+(density?"d+":"")+(PLC?"P":"")+")";
+			sw.Write(label+",");
 			for (int i = 0; i <= currentStep; i++)
 			{
-				fileWriter.Write("{0},", results[i]);
+				sw.Write("{0},", results[i]);
 			}
-			fileWriter.Write("\n");
-			fileWriter.WriteLine(label+",{0}", finalResult);
+			sw.Write("\n");
+			sw.Close();
+
+			sw = File.AppendText("output/result-"+filename);
+			sw.WriteLine(label+",{0}", finalResult);
+			sw.Close();
+
 
 			Debug.Log("One experiment done!");
 		}
@@ -164,7 +163,6 @@ public class scatterCluster : MonoBehaviour {
 	public GameObject distanceDisplay;
 	public GameObject progressDisplay;
 	public GameObject completeDisplay;
-	public GameObject tipDisplay;
 	public Material transparentMat;
 	public Light lightSource;
 	public bool continousMode;
@@ -173,17 +171,21 @@ public class scatterCluster : MonoBehaviour {
 
 	private Transform[] cluster;
 	private Transform redCube1, redCube2;
-	private Vector3 lastPos;
 	private bool stereo, montion, density, tunneling, size, transparent, PLC;
-	private StreamWriter fileWriter;
+	private string filename;
 	private StairCase[] staircases;
 	private StairCase currentStaircase;
 	private int blockCaseCount;
 	private System.DateTime clusterTimestamp;
-	private System.DateTime restTimestamp;
 	private bool gracePeriod;
 	private bool restPeriod;
+	private bool movementWarning;
 	private bool completed;
+	private byte[] positionData;
+	private int positionDataCount;
+	private System.DateTime startTime;
+	private float leftMostX;
+	private float rightMostX;
 
 	// Use this for initialization
 	void Start ()
@@ -191,16 +193,20 @@ public class scatterCluster : MonoBehaviour {
 		Random.seed = (int)System.DateTime.Now.Ticks;
 
 		cluster = new Transform[fragCount];
-		lastPos = Vector3.zero;
 		System.IO.Directory.CreateDirectory("output");
-		fileWriter = File.CreateText(string.Format("output/output-{0}.txt", System.DateTime.Now.ToString("yyyy-MMM-dd-HH-mm-ss")));
+		filename = string.Format("{0}.csv", System.DateTime.Now.ToString("yyyy-MMM-dd-HH-mm-ss"));
 		if (continousMode)
 		{
-			fileWriter.WriteLine("This is continues mode.");
+			// continous mode no longer supported
 		}
 		else
 		{
-			fileWriter.WriteLine("This is staircase mode.");
+			StreamWriter sw = File.AppendText("output/staircase-"+filename);
+			sw.WriteLine("The following is the staircase data.");
+			sw.Close();
+			sw = File.AppendText("output/result-"+filename);
+			sw.WriteLine("The following is the result data.");
+			sw.Close();
 		}
 		
 		stereo = true;
@@ -212,24 +218,28 @@ public class scatterCluster : MonoBehaviour {
 		PLC = false;
 		gracePeriod = false;
 		restPeriod = false;
+		movementWarning = false;
 		completed = false;
-		restTimestamp = System.DateTime.Now;
 
-		staircases = new StairCase[24];
-		for (int i = 0; i < 24; i++)
+		staircases = new StairCase[16];
+		for (int i = 0; i < 16; i++)
 		{
-			staircases [i] = new StairCase (i%2==1, i/2%2==1, i/4%2==1, i/8==1, i/8==2);
-			staircases[i].results[0] = maxHeight * 0.5f;
-			staircases[i].fileWriter = fileWriter;
+			staircases [i] = new StairCase (i%2==1, i/2%2==1, i/4%2==1, i/8%2==1);
+			staircases[i].results[0] = maxHeight * 0.4f;
+			staircases[i].filename = filename;
 		}
-		currentStaircase = staircases [Random.Range (0, 24)];
+		currentStaircase = staircases [Random.Range (0, 16)];
+
+		positionData = new byte[60 * 60 * 60 * 4 * 4];
+		positionDataCount = 0;
+		startTime = System.DateTime.Now;
 
 		resetCluster ();
 	}
 
 	bool checkIfAvailableForSameBlock()
 	{
-		for (int i = 0; i < 24; i++)
+		for (int i = 0; i < 16; i++)
 		{
 			if (staircases[i].finished())
 				continue;
@@ -242,7 +252,7 @@ public class scatterCluster : MonoBehaviour {
 	
 	bool checkIfAnyAvailable()
 	{
-		for (int i = 0; i < 24; i++)
+		for (int i = 0; i < 16; i++)
 		{
 			if (!staircases[i].finished())
 				return true;
@@ -253,8 +263,6 @@ public class scatterCluster : MonoBehaviour {
 
 	void resetCluster()
 	{
-		bool uniform = false;
-
 		float currentDistance;
 		if (continousMode)
 		{
@@ -270,8 +278,10 @@ public class scatterCluster : MonoBehaviour {
 
 			if (!checkIfAnyAvailable())
 			{
-				fileWriter.Close();
 				completed = true;
+				byte[] dataToWrite = new byte[positionDataCount];
+				System.Array.Copy(positionData, 0, dataToWrite, 0, positionDataCount);
+				File.WriteAllBytes("output/tracking-"+filename, dataToWrite);
 				return;
 			}
 
@@ -279,7 +289,7 @@ public class scatterCluster : MonoBehaviour {
 			{
 				while(true)
 				{
-					int randIndex = Random.Range(0,24);
+					int randIndex = Random.Range(0,16);
 					if (!staircases[randIndex].finished())
 					{
 						currentStaircase = staircases[randIndex];
@@ -291,7 +301,7 @@ public class scatterCluster : MonoBehaviour {
 			{
 				while(true)
 				{
-					int randIndex = Random.Range(0,24);
+					int randIndex = Random.Range(0,16);
 					if (!staircases[randIndex].finished()
 					    && staircases[randIndex].stereo == currentStaircase.stereo
 					    && staircases[randIndex].montion == currentStaircase.montion)
@@ -314,7 +324,6 @@ public class scatterCluster : MonoBehaviour {
 			tunneling = false;
 			size = false;
 			transparent = false;
-			uniform = currentStaircase.uniform;
 			PLC = currentStaircase.PLC;
 			currentDistance = currentStaircase.currentDistance();
 			
@@ -322,11 +331,15 @@ public class scatterCluster : MonoBehaviour {
 		}
 
 		statusDisplay.GetComponent<TextMesh>().text = 
-			(stereo?"stereo,":"")+(montion?"montion,":"")+(density?"density,":"")+(uniform?"uniform,":"")+(PLC?"PLC":"");
+			(stereo?"stereo,":"")+(montion?"montion,":"")+(density?"density,":"")+(PLC?"PLC":"");
 
-		tipDisplay.SetActive (montion);
 		OVRManager.instance.monoscopic = !stereo;
 		OVRCameraRig.disablePositionTracking = !montion;
+		if (montion)
+		{
+			leftMostX = character.position.x;
+			rightMostX = character.position.x;
+		}
 //		if (PLC || uniform)
 //		{
 //			RenderSettings.ambientMode = UnityEngine.Rendering.AmbientMode.Flat;
@@ -397,7 +410,7 @@ public class scatterCluster : MonoBehaviour {
 				float greyScale = PLC ? 1-cluster[i].position.z/maxHeight : 1;
 				cluster[i].GetComponent<Renderer>().material.color = new Color(greyScale, greyScale, greyScale, 1);
 			}
-			else if (!uniform)
+			else
 			{
 				float greyScale = Random.value;
 				cluster[i].GetComponent<Renderer>().material.color = new Color(greyScale, greyScale, greyScale, 1);
@@ -406,15 +419,40 @@ public class scatterCluster : MonoBehaviour {
 
 		clusterTimestamp = System.DateTime.Now;
 	}
+
+	bool checkMovedEnough()
+	{
+		if (!montion || rightMostX - leftMostX > 0.05)
+			return true;
+		else
+			return false;
+	}
 	
 	// Update is called once per frame
 	void Update ()
 	{
-		if (lastPos != Vector3.zero && lastPos != character.position)
+		Vector3 currentPosition = character.position;
+		System.Array.Copy (System.BitConverter.GetBytes ((float)(System.DateTime.Now - startTime).TotalSeconds), 0,
+		                   positionData, positionDataCount, sizeof(float));
+		positionDataCount += sizeof(float);
+		System.Array.Copy (System.BitConverter.GetBytes (currentPosition.x), 0,
+		                   positionData, positionDataCount, sizeof(float));
+		positionDataCount += sizeof(float);
+		System.Array.Copy (System.BitConverter.GetBytes (currentPosition.y), 0,
+		                   positionData, positionDataCount, sizeof(float));
+		positionDataCount += sizeof(float);
+		System.Array.Copy (System.BitConverter.GetBytes (currentPosition.z), 0,
+		                   positionData, positionDataCount, sizeof(float));
+		positionDataCount += sizeof(float);
+
+		if (currentPosition.x < leftMostX)
 		{
-			Debug.DrawLine(lastPos + 5*Vector3.back, character.position + 5*Vector3.back, Color.yellow, 100);
+			leftMostX = currentPosition.x;
 		}
-		lastPos = character.position;
+		if (currentPosition.x > rightMostX)
+		{
+			rightMostX = currentPosition.x;
+		}
 
 		if (size)
 		{
@@ -456,14 +494,25 @@ public class scatterCluster : MonoBehaviour {
 			maskCube.gameObject.SetActive(true);
 			completeDisplay.GetComponent<TextMesh> ().text = "Please take a rest! You can resume anytime by pressing space key!";
 		}
-		else if (!gracePeriod && (System.DateTime.Now - clusterTimestamp).Seconds > 4)
+		else if (movementWarning && (System.DateTime.Now - clusterTimestamp).TotalSeconds < 2)
+		{
+			maskCube.gameObject.SetActive(true);
+			completeDisplay.GetComponent<TextMesh> ().text = "Please move your head to have better judgment!";
+		}
+		else if (movementWarning && (System.DateTime.Now - clusterTimestamp).TotalSeconds >= 2)
+		{
+			maskCube.gameObject.SetActive(false);
+			movementWarning = false;
+			resetCluster();
+		}
+		else if (!gracePeriod && (System.DateTime.Now - clusterTimestamp).TotalSeconds > 4)
 		{
 			gracePeriod = true;
 			clusterTimestamp = System.DateTime.Now;
 			maskCube.gameObject.SetActive(true);
 			completeDisplay.GetComponent<TextMesh> ().text = "Too slow! Please try to make selection within 4 seconds!";
 		}
-		else if (gracePeriod && (System.DateTime.Now - clusterTimestamp).Seconds > 2)
+		else if (gracePeriod && (System.DateTime.Now - clusterTimestamp).TotalSeconds > 2)
 		{
 			gracePeriod = false;
 			maskCube.gameObject.SetActive(false);
@@ -480,39 +529,54 @@ public class scatterCluster : MonoBehaviour {
 			{
 				restPeriod = false;
 				maskCube.gameObject.SetActive(false);
-				restTimestamp = System.DateTime.Now;
 				resetCluster();
 			}
 		}
 		else if (!continousMode && Input.GetKeyDown ("left")) 
 		{
-			if(redCube1.position.z <= redCube2.position.z)
+			if (checkMovedEnough())
 			{
-				feedbackDisplay.GetComponent<TextMesh>().text = "Correct!";
-				currentStaircase.feedbackRight();
+				if(redCube1.position.z <= redCube2.position.z)
+				{
+					feedbackDisplay.GetComponent<TextMesh>().text = "Correct!";
+					currentStaircase.feedbackRight();
+				}
+				else
+				{
+					feedbackDisplay.GetComponent<TextMesh>().text = "Wrong!";
+					currentStaircase.feedbackWrong();
+				}
+				
+				resetCluster();
 			}
 			else
 			{
-				feedbackDisplay.GetComponent<TextMesh>().text = "Wrong!";
-				currentStaircase.feedbackWrong();
+				movementWarning = true;
+				clusterTimestamp = System.DateTime.Now;
 			}
-
-			resetCluster();
 		}
 		else if (!continousMode && Input.GetKeyDown("right"))
 		{
-			if(redCube1.position.z >= redCube2.position.z)
+			if (checkMovedEnough())
 			{
-				feedbackDisplay.GetComponent<TextMesh>().text = "Correct!";
-				currentStaircase.feedbackRight();
+				if(redCube1.position.z >= redCube2.position.z)
+				{
+					feedbackDisplay.GetComponent<TextMesh>().text = "Correct!";
+					currentStaircase.feedbackRight();
+				}
+				else
+				{
+					feedbackDisplay.GetComponent<TextMesh>().text = "Wrong!";
+					currentStaircase.feedbackWrong();
+				}
+				
+				resetCluster();
 			}
 			else
 			{
-				feedbackDisplay.GetComponent<TextMesh>().text = "Wrong!";
-				currentStaircase.feedbackWrong();
+				movementWarning = true;
+				clusterTimestamp = System.DateTime.Now;
 			}
-
-			resetCluster();
 		}
 		else if (continousMode && Input.GetKey("up"))
 		{
@@ -526,12 +590,12 @@ public class scatterCluster : MonoBehaviour {
 		}
 		else if (continousMode && Input.GetKeyDown("space"))
 		{
-			fileWriter.WriteLine("{0}", (redCube1.position.z-redCube2.position.z)*1000);
+			// continous mode no longer supported
+			//fileWriter.WriteLine("{0}", (redCube1.position.z-redCube2.position.z)*1000);
 			resetCluster();
 		}
 		else if (Input.GetKeyDown("escape"))
 		{
-			fileWriter.Close();
 			Application.Quit();
 		}
 		else if (Input.GetKeyDown("1"))
