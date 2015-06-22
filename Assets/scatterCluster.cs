@@ -16,9 +16,10 @@ public class StairCase
 	public int currentStep;
 	public string filename;
 
-	static int reversalMax = 14;
+	static int reversalMax = 20;
 	static float stepDownRatio = 0.8f;
-	static int finalResultCount = 10;
+	static float stepUpRatio = 1/0.8f/0.8f/0.8f;
+	static int finalResultCount = 14;
 
 	private bool lastFeedback;
 
@@ -73,7 +74,7 @@ public class StairCase
 		}
 		else
 		{
-			results[currentStep+1] = results[currentStep]/stepDownRatio;
+			results[currentStep+1] = results[currentStep]*stepUpRatio;
 		}
 
 		currentStep++;
@@ -113,9 +114,9 @@ public class StairCase
 		if (currentStep >= finalResultCount)
 		{
 			finalResult = 0;
-			for (int i = currentStep; i > currentStep - finalResultCount; i--)
+			for (int i = 0; i < finalResultCount; i++)
 			{
-				finalResult += results[i];
+				finalResult += reversalResults[reversalMax - i - 1];
 			}
 			finalResult /= finalResultCount;
 			
@@ -163,6 +164,7 @@ public class scatterCluster : MonoBehaviour {
 	public GameObject distanceDisplay;
 	public GameObject progressDisplay;
 	public GameObject completeDisplay;
+	public GameObject tipDisplay;
 	public Material transparentMat;
 	public Light lightSource;
 	public bool continousMode;
@@ -225,7 +227,7 @@ public class scatterCluster : MonoBehaviour {
 		for (int i = 0; i < 16; i++)
 		{
 			staircases [i] = new StairCase (i%2==1, i/2%2==1, i/4%2==1, i/8%2==1);
-			staircases[i].results[0] = maxHeight * 0.4f;
+			staircases[i].results[0] = maxHeight * 0.6f;
 			staircases[i].filename = filename;
 		}
 		currentStaircase = staircases [Random.Range (0, 16)];
@@ -339,6 +341,12 @@ public class scatterCluster : MonoBehaviour {
 		{
 			leftMostX = character.position.x;
 			rightMostX = character.position.x;
+
+			tipDisplay.GetComponent<TextMesh>().text = "This experiment requires motion";
+		}
+		else
+		{
+			tipDisplay.GetComponent<TextMesh>().text = "This experiment does not require motion";
 		}
 //		if (PLC || uniform)
 //		{
@@ -363,8 +371,8 @@ public class scatterCluster : MonoBehaviour {
 		}
 		redCube1 = Instantiate (redCube) as Transform;
 		redCube1.gameObject.SetActive (true);
-		redCube1.position = new Vector3 (-maxHeight/4 + (Random.value-0.5f)*maxHeight/3,
-		                                 maxHeight/2 + (Random.value-0.5f)*maxHeight/3*2,
+		redCube1.position = new Vector3 (-maxHeight/4 + (Random.value-0.5f)*2*maxHeight/20*1.5f,
+		                                 maxHeight/2 + (Random.value-0.5f)*2*maxHeight/20*1.5f,
 		                                 maxHeight/2+(leftFirst?1:-1)*currentDistance/2);
 
 		if (redCube2 != null)
@@ -373,8 +381,8 @@ public class scatterCluster : MonoBehaviour {
 		}
 		redCube2 = Instantiate (redCube) as Transform;
 		redCube2.gameObject.SetActive (true);
-		redCube2.position = new Vector3 (maxHeight/4 + (Random.value-0.5f)*maxHeight/3,
-		                                 maxHeight/2 + (Random.value-0.5f)*maxHeight/3*2,
+		redCube2.position = new Vector3 (maxHeight/4 + (Random.value-0.5f)*2*maxHeight/20*1.5f,
+		                                 maxHeight/2 + (Random.value-0.5f)*2*maxHeight/20*1.5f,
 		                                 maxHeight/2+(!leftFirst?1:-1)*currentDistance/2);
 
 		for (int i = 0; i < fragCount; i++)
@@ -422,7 +430,7 @@ public class scatterCluster : MonoBehaviour {
 
 	bool checkMovedEnough()
 	{
-		if (!montion || rightMostX - leftMostX > 0.05)
+		if (!montion || rightMostX - leftMostX > 0.03)
 			return true;
 		else
 			return false;
@@ -431,27 +439,30 @@ public class scatterCluster : MonoBehaviour {
 	// Update is called once per frame
 	void Update ()
 	{
-		Vector3 currentPosition = character.position;
-		System.Array.Copy (System.BitConverter.GetBytes ((float)(System.DateTime.Now - startTime).TotalSeconds), 0,
-		                   positionData, positionDataCount, sizeof(float));
-		positionDataCount += sizeof(float);
-		System.Array.Copy (System.BitConverter.GetBytes (currentPosition.x), 0,
-		                   positionData, positionDataCount, sizeof(float));
-		positionDataCount += sizeof(float);
-		System.Array.Copy (System.BitConverter.GetBytes (currentPosition.y), 0,
-		                   positionData, positionDataCount, sizeof(float));
-		positionDataCount += sizeof(float);
-		System.Array.Copy (System.BitConverter.GetBytes (currentPosition.z), 0,
-		                   positionData, positionDataCount, sizeof(float));
-		positionDataCount += sizeof(float);
-
-		if (currentPosition.x < leftMostX)
+		if (!completed)
 		{
-			leftMostX = currentPosition.x;
-		}
-		if (currentPosition.x > rightMostX)
-		{
-			rightMostX = currentPosition.x;
+			Vector3 currentPosition = character.position;
+			System.Array.Copy (System.BitConverter.GetBytes ((float)(System.DateTime.Now - startTime).TotalSeconds), 0,
+			                   positionData, positionDataCount, sizeof(float));
+			positionDataCount += sizeof(float);
+			System.Array.Copy (System.BitConverter.GetBytes (currentPosition.x), 0,
+			                   positionData, positionDataCount, sizeof(float));
+			positionDataCount += sizeof(float);
+			System.Array.Copy (System.BitConverter.GetBytes (currentPosition.y), 0,
+			                   positionData, positionDataCount, sizeof(float));
+			positionDataCount += sizeof(float);
+			System.Array.Copy (System.BitConverter.GetBytes (currentPosition.z), 0,
+			                   positionData, positionDataCount, sizeof(float));
+			positionDataCount += sizeof(float);
+			
+			if (currentPosition.x < leftMostX)
+			{
+				leftMostX = currentPosition.x;
+			}
+			if (currentPosition.x > rightMostX)
+			{
+				rightMostX = currentPosition.x;
+			}
 		}
 
 		if (size)
@@ -519,7 +530,7 @@ public class scatterCluster : MonoBehaviour {
 			resetCluster();
 		}
 
-		if (gracePeriod || completed)
+		if (gracePeriod || completed || movementWarning)
 		{
 			// gracePeriod has no reaction
 		}
