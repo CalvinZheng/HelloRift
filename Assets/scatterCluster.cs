@@ -16,10 +16,10 @@ public class StairCase
 	public int currentStep;
 	public string filename;
 
-	static int reversalMax = 20;
+	static int reversalMax = 18;
 	static float stepDownRatio = 0.8f;
 	static float stepUpRatio = 1/0.8f/0.8f/0.8f;
-	static int finalResultCount = 14;
+	static int finalResultCount = 12;
 
 	private bool lastFeedback;
 
@@ -272,11 +272,6 @@ public class scatterCluster : MonoBehaviour {
 		}
 		else
 		{
-//			if ((System.DateTime.Now - restTimestamp).Minutes >= timeUntilRest)
-//			{
-//				restPeriod = true;
-//				return;
-//			}
 
 			if (!checkIfAnyAvailable())
 			{
@@ -348,19 +343,7 @@ public class scatterCluster : MonoBehaviour {
 		{
 			tipDisplay.GetComponent<TextMesh>().text = "This experiment does not require motion";
 		}
-//		if (PLC || uniform)
-//		{
-//			RenderSettings.ambientMode = UnityEngine.Rendering.AmbientMode.Flat;
-//			RenderSettings.ambientSkyColor = Color.white;
-//			RenderSettings.defaultReflectionMode = UnityEngine.Rendering.DefaultReflectionMode.Custom;
-//			lightSource.enabled = false;
-//		}
-//		else
-//		{
-//			RenderSettings.ambientMode = UnityEngine.Rendering.AmbientMode.Skybox;
-//			RenderSettings.defaultReflectionMode = UnityEngine.Rendering.DefaultReflectionMode.Skybox;
-//			lightSource.enabled = true;
-//		}
+
 		int realFragCount = density ? 1131 : 64;
 
 		bool leftFirst = Random.value > 0.5;
@@ -426,6 +409,8 @@ public class scatterCluster : MonoBehaviour {
 		}
 
 		clusterTimestamp = System.DateTime.Now;
+		
+		Resources.UnloadUnusedAssets();
 	}
 
 	bool checkMovedEnough()
@@ -442,18 +427,22 @@ public class scatterCluster : MonoBehaviour {
 		if (!completed)
 		{
 			Vector3 currentPosition = character.position;
-			System.Array.Copy (System.BitConverter.GetBytes ((float)(System.DateTime.Now - startTime).TotalSeconds), 0,
-			                   positionData, positionDataCount, sizeof(float));
-			positionDataCount += sizeof(float);
-			System.Array.Copy (System.BitConverter.GetBytes (currentPosition.x), 0,
-			                   positionData, positionDataCount, sizeof(float));
-			positionDataCount += sizeof(float);
-			System.Array.Copy (System.BitConverter.GetBytes (currentPosition.y), 0,
-			                   positionData, positionDataCount, sizeof(float));
-			positionDataCount += sizeof(float);
-			System.Array.Copy (System.BitConverter.GetBytes (currentPosition.z), 0,
-			                   positionData, positionDataCount, sizeof(float));
-			positionDataCount += sizeof(float);
+
+			if (positionDataCount < 60*60*60*4*4-16)
+			{
+				System.Array.Copy (System.BitConverter.GetBytes ((float)(System.DateTime.Now - startTime).TotalSeconds), 0,
+				                   positionData, positionDataCount, sizeof(float));
+				positionDataCount += sizeof(float);
+				System.Array.Copy (System.BitConverter.GetBytes (currentPosition.x), 0,
+				                   positionData, positionDataCount, sizeof(float));
+				positionDataCount += sizeof(float);
+				System.Array.Copy (System.BitConverter.GetBytes (currentPosition.y), 0,
+				                   positionData, positionDataCount, sizeof(float));
+				positionDataCount += sizeof(float);
+				System.Array.Copy (System.BitConverter.GetBytes (currentPosition.z), 0,
+				                   positionData, positionDataCount, sizeof(float));
+				positionDataCount += sizeof(float);
+			}
 			
 			if (currentPosition.x < leftMostX)
 			{
