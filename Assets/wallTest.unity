@@ -177,7 +177,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!102 &108851921
 TextMesh:
   serializedVersion: 3
@@ -845,7 +845,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!102 &1552442427
 TextMesh:
   serializedVersion: 3
@@ -1192,7 +1192,7 @@ MonoBehaviour:
   transparentMat: {fileID: 2100000, guid: 19a430111abb046d7b2e2001c86a7c2d, type: 2}
   lightSource: {fileID: 834484757}
   continousMode: 0
-  blockCases: 100
+  blockCases: 150
   timeUntilRest: 10
 --- !u!1 &1785417736
 GameObject:
@@ -1210,7 +1210,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!102 &1785417737
 TextMesh:
   serializedVersion: 3
