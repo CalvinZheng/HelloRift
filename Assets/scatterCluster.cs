@@ -208,7 +208,9 @@ public class scatterCluster : MonoBehaviour {
 	private StairCase currentStaircase;
 	private int blockCaseCount;
 	private System.DateTime clusterTimestamp;
+	private bool timeoutPeriod;
 	private bool gracePeriod;
+	private System.DateTime graceTimestamp;
 	private bool restPeriod;
 	private bool movementWarning;
 	private bool completed;
@@ -247,10 +249,12 @@ public class scatterCluster : MonoBehaviour {
 		size = true;
 		transparent = false;
 		PLC = false;
-		gracePeriod = false;
+		timeoutPeriod = false;
 		restPeriod = false;
 		movementWarning = false;
 		completed = false;
+		gracePeriod = false;
+		graceTimestamp = System.DateTime.Now;
 
 		staircases = new StairCase[16];
 		for (int i = 0; i < 16; i++)
@@ -542,21 +546,30 @@ public class scatterCluster : MonoBehaviour {
 			movementWarning = false;
 			resetCluster();
 		}
-		else if (!gracePeriod && (System.DateTime.Now - clusterTimestamp).TotalSeconds > 4)
+		else if (!timeoutPeriod && (System.DateTime.Now - clusterTimestamp).TotalSeconds > 4)
 		{
-			gracePeriod = true;
+			timeoutPeriod = true;
 			clusterTimestamp = System.DateTime.Now;
 			maskCube.gameObject.SetActive(true);
 			completeDisplay.GetComponent<TextMesh> ().text = "Too slow! Please try to make selection within 4 seconds!";
 		}
-		else if (gracePeriod && (System.DateTime.Now - clusterTimestamp).TotalSeconds > 2)
+		else if (timeoutPeriod && (System.DateTime.Now - clusterTimestamp).TotalSeconds > 2)
 		{
-			gracePeriod = false;
+			timeoutPeriod = false;
 			maskCube.gameObject.SetActive(false);
 			resetCluster();
 		}
-
-		if (gracePeriod || completed || movementWarning)
+		else if (gracePeriod && (System.DateTime.Now - graceTimestamp).TotalSeconds > 1)
+		{
+			gracePeriod = false;
+			maskCube.gameObject.SetActive(false);
+		}
+		
+		if (Input.GetKeyDown("escape"))
+		{
+			Application.Quit();
+		}
+		else if (timeoutPeriod || completed || movementWarning)
 		{
 			// gracePeriod has no reaction
 		}
@@ -585,6 +598,11 @@ public class scatterCluster : MonoBehaviour {
 				}
 				
 				resetCluster();
+				
+				gracePeriod = true;
+				graceTimestamp = System.DateTime.Now;
+				maskCube.gameObject.SetActive(true);
+				completeDisplay.GetComponent<TextMesh> ().text = "";
 			}
 			else
 			{
@@ -608,6 +626,11 @@ public class scatterCluster : MonoBehaviour {
 				}
 				
 				resetCluster();
+				
+				gracePeriod = true;
+				graceTimestamp = System.DateTime.Now;
+				maskCube.gameObject.SetActive(true);
+				completeDisplay.GetComponent<TextMesh> ().text = "";
 			}
 			else
 			{
@@ -630,10 +653,6 @@ public class scatterCluster : MonoBehaviour {
 			// continous mode no longer supported
 			//fileWriter.WriteLine("{0}", (redCube1.position.z-redCube2.position.z)*1000);
 			resetCluster();
-		}
-		else if (Input.GetKeyDown("escape"))
-		{
-			Application.Quit();
 		}
 		else if (Input.GetKeyDown("1"))
 		{
