@@ -141,6 +141,13 @@ public class OVRCameraRig : MonoBehaviour
 
 		trackerAnchor.localPosition = tracker.position;
 		centerEyeAnchor.localPosition = 0.5f * (hmdLeftEye.position + hmdRightEye.position);
+
+		Vector3 newCenter;
+		newCenter.x = Mathf.Min(Mathf.Max (-0.3f, centerEyeAnchor.localPosition.x), 0.3f);
+		newCenter.y = Mathf.Min(Mathf.Max (-0.3f, centerEyeAnchor.localPosition.y), 0.3f);
+		newCenter.z = Mathf.Min(Mathf.Max (-0.3f, centerEyeAnchor.localPosition.z), 0.3f);
+		centerEyeAnchor.localPosition = newCenter;
+
 		if (disablePositionTracking && disableOrietationTracking)
 		{
 			leftEyeAnchor.localPosition = Quaternion.Inverse(centerEyeAnchor.localRotation) * (hmdLeftEye.position - hmdRightEye.position) * 0.5f;
@@ -154,8 +161,8 @@ public class OVRCameraRig : MonoBehaviour
 		}
 		else
 		{
-			leftEyeAnchor.localPosition = monoscopic ? centerEyeAnchor.localPosition : hmdLeftEye.position;
-			rightEyeAnchor.localPosition = monoscopic ? centerEyeAnchor.localPosition : hmdRightEye.position;
+			leftEyeAnchor.localPosition = monoscopic ? centerEyeAnchor.localPosition : 0.5f * (hmdLeftEye.position - hmdRightEye.position) + centerEyeAnchor.localPosition;
+			rightEyeAnchor.localPosition = monoscopic ? centerEyeAnchor.localPosition : 0.5f * (hmdRightEye.position - hmdLeftEye.position) + centerEyeAnchor.localPosition;
 		}
 
 		if (UpdatedAnchors != null)
