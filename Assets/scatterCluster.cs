@@ -15,11 +15,16 @@ public class StairCase
 	public float finalResult;
 	public int currentStep;
 	public string filename;
+	public int[] rightCount;
+	public int[] wrongCount;
+	public int currentLevel;
 
 	static int reversalMax = 18;
-	static float stepDownRatio = 0.8f;
+	static float stepDownRatio = 0.9f;
 	static float stepUpRatio = 1/0.8f/0.8f/0.8f;
 	static int finalResultCount = 12;
+	static int maxStepForSpread = 400;
+	static float initialForSpread = 0.06f;
 
 	private bool lastFeedback;
 
@@ -39,6 +44,15 @@ public class StairCase
 		finalResult = -1;
 		currentStep = 0;
 		reversalResults = new float[reversalMax];
+
+		currentLevel = 0;
+		rightCount = new int[500];
+		wrongCount = new int[500];
+		for (int i = 0; i < 500; i++)
+		{
+			rightCount[i] = 0;
+			wrongCount[i] = 0;
+		}
 	}
 
 	public float currentDistance()
@@ -59,22 +73,25 @@ public class StairCase
 			return;
 		}
 
-		if (currentStep > 0 && lastFeedback != false)
-		{
-			reversalResults[reversalCount] = results[currentStep];
-			reversalCount++;
-		}
+//		if (currentStep > 0 && lastFeedback != false)
+//		{
+//			reversalResults[reversalCount] = results[currentStep];
+//			reversalCount++;
+//		}
 
 		lastFeedback = false;
 
-		if (reversalCount >= reversalMax)
+		if (currentStep >= maxStepForSpread)
 		{
 			outputResult();
 			return;
 		}
 		else
 		{
-			results[currentStep+1] = results[currentStep]*stepUpRatio;
+			//results[currentStep+1] = results[currentStep]*stepUpRatio;
+			wrongCount[currentLevel] += 1;
+			currentLevel = Random.Range(0,20);
+			results[currentStep+1] = Mathf.Pow(stepDownRatio, currentLevel)*initialForSpread;
 		}
 
 		currentStep++;
@@ -88,22 +105,25 @@ public class StairCase
 			return;
 		}
 		
-		if (currentStep > 0 && lastFeedback != true)
-		{
-			reversalResults[reversalCount] = results[currentStep];
-			reversalCount++;
-		}
+//		if (currentStep > 0 && lastFeedback != true)
+//		{
+//			reversalResults[reversalCount] = results[currentStep];
+//			reversalCount++;
+//		}
 
 		lastFeedback = true;
 		
-		if (reversalCount >= reversalMax)
+		if (currentStep >= maxStepForSpread)
 		{
 			outputResult();
 			return;
 		}
 		else
 		{
-			results[currentStep+1] = results[currentStep]*stepDownRatio;
+//			results[currentStep+1] = results[currentStep]*stepDownRatio;
+			rightCount[currentLevel] += 1;
+			currentLevel = Random.Range(0,20);
+			results[currentStep+1] = Mathf.Pow(stepDownRatio, currentLevel)*initialForSpread;
 		}
 		
 		currentStep++;
@@ -114,11 +134,11 @@ public class StairCase
 		if (currentStep >= finalResultCount)
 		{
 			finalResult = 0;
-			for (int i = 0; i < finalResultCount; i++)
-			{
-				finalResult += reversalResults[reversalMax - i - 1];
-			}
-			finalResult /= finalResultCount;
+//			for (int i = 0; i < finalResultCount; i++)
+//			{
+//				finalResult += reversalResults[reversalMax - i - 1];
+//			}
+//			finalResult /= finalResultCount;
 			
 			StreamWriter sw = File.AppendText("output/staircase-"+filename);
 			string label = "("+(stereo?"s+":"")+(montion?"m+":"")+(density?"d+":"")+(PLC?"P":"")+")";
@@ -131,7 +151,13 @@ public class StairCase
 			sw.Close();
 
 			sw = File.AppendText("output/result-"+filename);
-			sw.WriteLine(label+",{0}", finalResult);
+			float initialDistance = initialForSpread;
+			for (int i = 0; i < 20; i++)
+			{
+				if (rightCount[i]+wrongCount[i] <= 0)
+					continue;
+				sw.WriteLine("{0},{1}", Mathf.Pow(stepDownRatio, i) * initialDistance, (float)rightCount[i] / (rightCount[i]+wrongCount[i]));
+			}
 			sw.Close();
 
 
@@ -145,7 +171,10 @@ public class StairCase
 
 	public float completeRate()
 	{
-		return (float)reversalCount / reversalMax;
+//		return (float)reversalCount / reversalMax;
+		if (finished ())
+			return 1.0f;
+		return (float)currentStep / maxStepForSpread;
 	}
 }
 
@@ -227,8 +256,16 @@ public class scatterCluster : MonoBehaviour {
 		for (int i = 0; i < 16; i++)
 		{
 			staircases [i] = new StairCase (i%2==1, i/2%2==1, i/4%2==1, i/8%2==1);
-			staircases[i].results[0] = maxHeight * 0.6f;
+			staircases[i].results[0] = maxHeight * 0.2f;
 			staircases[i].filename = filename;
+
+			if (i%2==0&&i/2%2==1&&i/4%2==1&&i/8%2==1)
+			{
+			}
+			else
+			{
+				staircases[i].finalResult = 0;
+			}
 		}
 		currentStaircase = staircases [Random.Range (0, 16)];
 
@@ -344,7 +381,7 @@ public class scatterCluster : MonoBehaviour {
 			tipDisplay.GetComponent<TextMesh>().text = "This experiment does not require motion";
 		}
 
-		int realFragCount = density ? 1131 : 64;
+		int realFragCount = density ? 1131 : 0;
 
 		bool leftFirst = Random.value > 0.5;
 

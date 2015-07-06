@@ -143,9 +143,9 @@ public class OVRCameraRig : MonoBehaviour
 		centerEyeAnchor.localPosition = 0.5f * (hmdLeftEye.position + hmdRightEye.position);
 
 		Vector3 newCenter;
-		newCenter.x = Mathf.Min(Mathf.Max (-0.3f, centerEyeAnchor.localPosition.x), 0.3f);
-		newCenter.y = Mathf.Min(Mathf.Max (-0.3f, centerEyeAnchor.localPosition.y), 0.3f);
-		newCenter.z = Mathf.Min(Mathf.Max (-0.3f, centerEyeAnchor.localPosition.z), 0.3f);
+		newCenter.x = Mathf.Min(Mathf.Max (-0.15f, centerEyeAnchor.localPosition.x), 0.15f);
+		newCenter.y = Mathf.Min(Mathf.Max (-0.15f, centerEyeAnchor.localPosition.y), 0.15f);
+		newCenter.z = Mathf.Min(Mathf.Max (-0.15f, centerEyeAnchor.localPosition.z), 0.15f);
 		centerEyeAnchor.localPosition = newCenter;
 
 		if (disablePositionTracking && disableOrietationTracking)
