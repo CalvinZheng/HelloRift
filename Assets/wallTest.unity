@@ -177,7 +177,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!102 &108851921
 TextMesh:
   serializedVersion: 3
@@ -947,7 +947,7 @@ MeshRenderer:
   m_CastShadows: 0
   m_ReceiveShadows: 1
   m_Materials:
-  - {fileID: 10303, guid: 0000000000000000f000000000000000, type: 0}
+  - {fileID: 2100000, guid: a747c066268212d43b5f63acdf22b1d0, type: 2}
   m_SubsetIndices: 
   m_StaticBatchRoot: {fileID: 0}
   m_UseLightProbes: 1
@@ -1184,7 +1184,7 @@ MonoBehaviour:
   character: {fileID: 1563724829}
   monitorCube: {fileID: 1631890874}
   maskCube: {fileID: 1521259054}
-  fragCount: 1131
+  fragCount: 1331
   maxHeight: .200000003
   tunnelWidth: .0199999996
   statusDisplay: {fileID: 108851920}
