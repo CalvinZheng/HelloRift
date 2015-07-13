@@ -12,6 +12,7 @@ public class StairCase
 	public bool forceMove;
 	public bool transparent;
 	public bool tunneling;
+	public bool uneven;
 	public int reversalCount;
 	public float[] results;
 	public float[] reversalResults;
@@ -39,6 +40,7 @@ public class StairCase
 		this.forceMove = montion;
 		this.transparent = false;
 		this.tunneling = false;
+		this.uneven = false;
 
 		results = new float[500];
 		for (int i = 0; i < 500; i++)
@@ -132,7 +134,7 @@ public class StairCase
 			finalResult = Mathf.Pow(2, finalResult);
 			
 			StreamWriter sw = File.AppendText("output/staircase-"+filename);
-			string label = "("+(stereo?"s+":"")+(montion?"m+":"")+(forceMove?"f+":"")+(!density?"b":"")+(PLC?"P":"")+(transparent?"a":"")+(tunneling?"t":"")+")";
+			string label = "("+(stereo?"s+":"")+(montion?"m+":"")+(forceMove?"f+":"")+(!density?"b":"")+(PLC?"P":"")+(transparent?"a":"")+(tunneling?"t":"")+(uneven?"e":"")+")";
 			sw.Write(label+",");
 			for (int i = 0; i <= currentStep; i++)
 			{
@@ -180,6 +182,7 @@ public class scatterCluster : MonoBehaviour {
 	public bool continousMode;
 	public int blockCases;
 	public float timeUntilRest;
+	public float unevenRate;
 
 	private Transform[] cluster;
 	private Transform redCube1, redCube2;
@@ -187,6 +190,7 @@ public class scatterCluster : MonoBehaviour {
 	private string filename;
 	private StairCase[] staircases;
 	private StairCase currentStaircase;
+	static private int staircaseCount = 2;
 	private int blockCaseCount;
 	private System.DateTime clusterTimestamp;
 	private bool timeoutPeriod;
@@ -237,27 +241,29 @@ public class scatterCluster : MonoBehaviour {
 		gracePeriod = false;
 		graceTimestamp = System.DateTime.Now;
 
-		staircases = new StairCase[9];
+		staircases = new StairCase[staircaseCount];
 		
+//		staircases [0] = new StairCase (false, false, true, false);
+//		staircases [1] = new StairCase (true, false, true, false);
+//		staircases [2] = new StairCase (true, false, true, false);
+//		staircases [2].forceMove = true;
+//		staircases [3] = new StairCase (false, true, true, false);
 		staircases [0] = new StairCase (false, false, true, false);
-		staircases [1] = new StairCase (true, false, true, false);
-		staircases [2] = new StairCase (true, false, true, false);
-		staircases [2].forceMove = true;
-		staircases [3] = new StairCase (false, true, true, false);
-		staircases [4] = new StairCase (true, true, true, false);
-		staircases [5] = new StairCase (true, true, false, false);
-		staircases [6] = new StairCase (true, true, true, true);
-		staircases [7] = new StairCase (true, true, true, false);
-		staircases [7].tunneling = true;
-		staircases [8] = new StairCase (true, true, true, false);
-		staircases [8].transparent = true;
+		staircases [0].uneven = true;
+		staircases [1] = new StairCase (false, false, true, false);
+//		staircases [5] = new StairCase (true, true, false, false);
+//		staircases [6] = new StairCase (true, true, true, true);
+//		staircases [7] = new StairCase (true, true, true, false);
+//		staircases [7].tunneling = true;
+//		staircases [8] = new StairCase (true, true, true, false);
+//		staircases [8].transparent = true;
 
-		for (int i = 0; i < 9; i++)
+		for (int i = 0; i < staircaseCount; i++)
 		{
 			staircases[i].results[0] = maxHeight * 0.2f;
 			staircases[i].filename = filename;
 		}
-		currentStaircase = staircases [Random.Range (0, 9)];
+		currentStaircase = staircases [Random.Range (0, staircaseCount)];
 
 		positionData = new byte[60 * 60 * 60 * 4 * 4];
 		positionDataCount = 0;
@@ -268,7 +274,7 @@ public class scatterCluster : MonoBehaviour {
 
 	bool checkIfAvailableForSameBlock()
 	{
-		for (int i = 0; i < 9; i++)
+		for (int i = 0; i < staircaseCount; i++)
 		{
 			if (staircases[i].finished())
 				continue;
@@ -281,7 +287,7 @@ public class scatterCluster : MonoBehaviour {
 	
 	bool checkIfAnyAvailable()
 	{
-		for (int i = 0; i < 9; i++)
+		for (int i = 0; i < staircaseCount; i++)
 		{
 			if (!staircases[i].finished())
 				return true;
@@ -313,7 +319,7 @@ public class scatterCluster : MonoBehaviour {
 			{
 				while(true)
 				{
-					int randIndex = Random.Range(0,9);
+					int randIndex = Random.Range(0,staircaseCount);
 					if (!staircases[randIndex].finished())
 					{
 						currentStaircase = staircases[randIndex];
@@ -367,12 +373,12 @@ public class scatterCluster : MonoBehaviour {
 			transparent = currentStaircase.transparent;
 			PLC = currentStaircase.PLC;
 			currentDistance = Mathf.Min(currentStaircase.currentDistance(), maxHeight);
-			
+
 //			blockCaseCount++;
 		}
 
 		statusDisplay.GetComponent<TextMesh>().text = 
-			(stereo?"stereo+":"")+(montion?"montion+":"")+(currentStaircase.forceMove?"force+":"")+(PLC?"PLC":"")+(transparent?"transparent":"")+(tunneling?"tunneling":"");
+			(stereo?"stereo+":"")+(montion?"montion+":"")+(currentStaircase.forceMove?"force+":"")+(PLC?"PLC":"")+(transparent?"transparent":"")+(tunneling?"tunneling":"")+(currentStaircase.uneven?"uneven":"");
 
 		OVRManager.instance.monoscopic = !stereo;
 		OVRCameraRig.disablePositionTracking = !montion;
@@ -425,7 +431,39 @@ public class scatterCluster : MonoBehaviour {
 			cluster[i].gameObject.SetActive(true);
 			while(true)
 			{
-				cluster[i].position = new Vector3(Random.value*maxHeight-maxHeight/2, Random.value*maxHeight, Random.value*maxHeight);
+				if (currentStaircase.uneven)
+				{
+					float x = Random.value*maxHeight-maxHeight/2;
+					float y = Random.value*maxHeight;
+					float z = 0;
+					if (x < 0)
+					{
+						if (leftFirst == (Random.value < unevenRate))
+						{
+							z = Random.value*(maxHeight - redCube1.position.z)+redCube1.position.z;
+						}
+						else
+						{
+							z = Random.value*redCube1.position.z;
+						}
+					}
+					else
+					{
+						if (!leftFirst == (Random.value < unevenRate))
+						{
+							z = Random.value*(maxHeight - redCube2.position.z)+redCube2.position.z;
+						}
+						else
+						{
+							z = Random.value*redCube2.position.z;
+						}
+					}
+					cluster[i].position = new Vector3(x,y,z);
+				}
+				else
+				{
+					cluster[i].position = new Vector3(Random.value*maxHeight-maxHeight/2, Random.value*maxHeight, Random.value*maxHeight);
+				}
 				if (!tunneling)
 					break;
 
@@ -454,6 +492,11 @@ public class scatterCluster : MonoBehaviour {
 		clusterTimestamp = System.DateTime.Now;
 		
 		Resources.UnloadUnusedAssets();
+	}
+
+	float unevenRandom()
+	{
+		return (Random.value * Random.value + Random.value)/2;
 	}
 
 	bool checkMovedEnough()

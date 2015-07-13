@@ -1198,6 +1198,7 @@ MonoBehaviour:
   continousMode: 0
   blockCases: 150
   timeUntilRest: 10
+  unevenRate: .699999988
 --- !u!1 &1785417736
 GameObject:
   m_ObjectHideFlags: 0
