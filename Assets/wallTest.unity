@@ -517,6 +517,10 @@ Prefab:
     m_RemovedComponents: []
   m_ParentPrefab: {fileID: 100100000, guid: ce816f2e6abb0504092c23ed9b970dfd, type: 2}
   m_IsPrefabParent: 0
+--- !u!4 &510679344 stripped
+Transform:
+  m_PrefabParentObject: {fileID: 400006, guid: 126d619cf4daa52469682f85c1378b4a, type: 2}
+  m_PrefabInternal: {fileID: 994569624}
 --- !u!1 &620340855
 GameObject:
   m_ObjectHideFlags: 0
@@ -651,6 +655,10 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_RootOrder: 1
+--- !u!4 &858475550 stripped
+Transform:
+  m_PrefabParentObject: {fileID: 400000, guid: 126d619cf4daa52469682f85c1378b4a, type: 2}
+  m_PrefabInternal: {fileID: 994569624}
 --- !u!1001 &913536509
 Prefab:
   m_ObjectHideFlags: 0
@@ -849,7 +857,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!102 &1552442427
 TextMesh:
   serializedVersion: 3
@@ -969,7 +977,7 @@ BoxCollider:
   m_GameObject: {fileID: 1563524350}
   m_Material: {fileID: 0}
   m_IsTrigger: 0
-  m_Enabled: 0
+  m_Enabled: 1
   serializedVersion: 2
   m_Size: {x: 1, y: 1, z: 1}
   m_Center: {x: 0, y: 0, z: 0}
@@ -1110,7 +1118,7 @@ BoxCollider:
   m_GameObject: {fileID: 1631890870}
   m_Material: {fileID: 0}
   m_IsTrigger: 0
-  m_Enabled: 1
+  m_Enabled: 0
   serializedVersion: 2
   m_Size: {x: 1, y: 1, z: 1}
   m_Center: {x: 0, y: 0, z: 0}
@@ -1198,7 +1206,10 @@ MonoBehaviour:
   continousMode: 0
   blockCases: 150
   timeUntilRest: 10
-  unevenRate: .699999988
+  unevenRate: .5
+  pseudoObserver: 1
+  leftEye: {fileID: 510679344}
+  rightEye: {fileID: 858475550}
 --- !u!1 &1785417736
 GameObject:
   m_ObjectHideFlags: 0
@@ -1215,7 +1226,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!102 &1785417737
 TextMesh:
   serializedVersion: 3
@@ -1323,7 +1334,7 @@ BoxCollider:
   m_GameObject: {fileID: 2009055228}
   m_Material: {fileID: 0}
   m_IsTrigger: 0
-  m_Enabled: 0
+  m_Enabled: 1
   serializedVersion: 2
   m_Size: {x: 1, y: 1, z: 1}
   m_Center: {x: 0, y: 0, z: 0}

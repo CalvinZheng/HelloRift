@@ -183,6 +183,9 @@ public class scatterCluster : MonoBehaviour {
 	public int blockCases;
 	public float timeUntilRest;
 	public float unevenRate;
+	public bool pseudoObserver;
+	public Transform leftEye;
+	public Transform rightEye;
 
 	private Transform[] cluster;
 	private Transform redCube1, redCube2;
@@ -190,7 +193,7 @@ public class scatterCluster : MonoBehaviour {
 	private string filename;
 	private StairCase[] staircases;
 	private StairCase currentStaircase;
-	static private int staircaseCount = 2;
+	static private int staircaseCount = 3;
 	private int blockCaseCount;
 	private System.DateTime clusterTimestamp;
 	private bool timeoutPeriod;
@@ -204,6 +207,8 @@ public class scatterCluster : MonoBehaviour {
 	private System.DateTime startTime;
 	private float leftMostX;
 	private float rightMostX;
+	private bool observed;
+	private bool observedResult;
 
 	// Use this for initialization
 	void Start ()
@@ -240,6 +245,7 @@ public class scatterCluster : MonoBehaviour {
 		completed = false;
 		gracePeriod = false;
 		graceTimestamp = System.DateTime.Now;
+		observed = false;
 
 		staircases = new StairCase[staircaseCount];
 		
@@ -250,7 +256,8 @@ public class scatterCluster : MonoBehaviour {
 //		staircases [3] = new StairCase (false, true, true, false);
 		staircases [0] = new StairCase (false, false, true, false);
 		staircases [0].uneven = true;
-		staircases [1] = new StairCase (false, false, true, false);
+		staircases [1] = new StairCase (true, false, true, false);
+		staircases [2] = new StairCase (false, false, true, false);
 //		staircases [5] = new StairCase (true, true, false, false);
 //		staircases [6] = new StairCase (true, true, true, true);
 //		staircases [7] = new StairCase (true, true, true, false);
@@ -489,6 +496,8 @@ public class scatterCluster : MonoBehaviour {
 			}
 		}
 
+		observed = false;
+
 		clusterTimestamp = System.DateTime.Now;
 		
 		Resources.UnloadUnusedAssets();
@@ -505,6 +514,26 @@ public class scatterCluster : MonoBehaviour {
 			return true;
 		else
 			return false;
+	}
+
+	float testVisibility(Transform start, Transform end)
+	{
+		RaycastHit hit;
+		int hitCount = 0;
+		int totalCount = 0;
+		for (float xStep = -0.006f; xStep <= 0.006f; xStep += 0.0001f)
+		{
+			for (float yStep = -0.006f; yStep <= 0.006f; yStep += 0.0001f)
+			{
+				Physics.Raycast(start.position, end.position-start.position + new Vector3(xStep, yStep, 0), out hit);
+				if (hit.collider == end.gameObject.GetComponent<Collider> ())
+				{
+					hitCount++;
+				}
+				totalCount++;
+			}
+		}
+		return (float)hitCount/totalCount*Mathf.Pow(12*Mathf.Sqrt(3)/(1.2f+end.position.z*2),2);
 	}
 	
 	// Update is called once per frame
@@ -628,6 +657,64 @@ public class scatterCluster : MonoBehaviour {
 				resetCluster();
 			}
 		}
+		else if (pseudoObserver)
+		{
+			if (!observed && (System.DateTime.Now - clusterTimestamp).TotalSeconds > 1)
+			{
+				float leftVisibility = testVisibility(leftEye, redCube1) + testVisibility(rightEye, redCube1);
+				float rightVisibility = testVisibility(leftEye, redCube2) + testVisibility(rightEye, redCube2);
+				
+				distanceDisplay.GetComponent<TextMesh> ().text = string.Format("{0}vs.{1}", leftVisibility/2, rightVisibility/2);
+
+				observedResult = (leftVisibility > rightVisibility);
+
+				observed = true;
+			}
+
+			if ((System.DateTime.Now - clusterTimestamp).TotalSeconds > 1.1)
+			{
+				if (observedResult)
+				{
+					if(redCube1.position.z <= redCube2.position.z)
+					{
+						feedbackDisplay.GetComponent<TextMesh>().text = "Correct!";
+						currentStaircase.feedbackRight();
+					}
+					else
+					{
+						feedbackDisplay.GetComponent<TextMesh>().text = "Wrong!";
+						currentStaircase.feedbackWrong();
+					}
+					
+					resetCluster();
+					
+					gracePeriod = true;
+					graceTimestamp = System.DateTime.Now;
+					//maskCube.gameObject.SetActive(true);
+					completeDisplay.GetComponent<TextMesh> ().text = "";
+				}
+				else
+				{
+					if(redCube1.position.z >= redCube2.position.z)
+					{
+						feedbackDisplay.GetComponent<TextMesh>().text = "Correct!";
+						currentStaircase.feedbackRight();
+					}
+					else
+					{
+						feedbackDisplay.GetComponent<TextMesh>().text = "Wrong!";
+						currentStaircase.feedbackWrong();
+					}
+					
+					resetCluster();
+					
+					gracePeriod = true;
+					graceTimestamp = System.DateTime.Now;
+					//maskCube.gameObject.SetActive(true);
+					completeDisplay.GetComponent<TextMesh> ().text = "";
+				}
+			}
+		}
 		else if (!continousMode && Input.GetKeyDown ("left")) 
 		{
 			if (checkMovedEnough())
@@ -742,7 +829,7 @@ public class scatterCluster : MonoBehaviour {
 
 		if (!continousMode)
 		{
-			distanceDisplay.GetComponent<TextMesh> ().text = string.Format("{0}", currentStaircase.currentDistance());
+			//distanceDisplay.GetComponent<TextMesh> ().text = string.Format("{0}", currentStaircase.currentDistance());
 			float progress = 0;
 			foreach (StairCase aStaircase in staircases)
 			{
