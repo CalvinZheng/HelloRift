@@ -19,16 +19,21 @@ public class StairCase
 	public float finalResult;
 	public int currentStep;
 	public string filename;
-	public int[] rightCount;
-	public int[] wrongCount;
-	public int currentLevel;
 
 	static int reversalMax = 20;
-	static float stepDownRatio = 0.8f;
+	static float stepDownRatio = 0.7f;
 	static float stepUpRatio = 2.19f;
 	static int finalResultCount = 16;
 
 	private bool lastFeedback;
+
+	static private int sampleNumber = 10;
+	static private int totalTrials = 10000;
+	static private float initDistance = 0.2f;
+	private int currentLevel;
+	private int[] rightCount;
+	private int[] wrongCount;
+	private int[] disagreeCount;
 
 	public StairCase(bool stereo, bool montion, bool density, bool PLC)
 	{
@@ -51,11 +56,23 @@ public class StairCase
 		finalResult = -1;
 		currentStep = 0;
 		reversalResults = new float[reversalMax];
+
+		currentLevel = Random.Range (0, sampleNumber);
+		rightCount = new int[sampleNumber];
+		wrongCount = new int[sampleNumber];
+		disagreeCount = new int[sampleNumber];
+		for (int i = 0; i < sampleNumber; i++)
+		{
+			wrongCount[i] = 0;
+			rightCount[i] = 0;
+			disagreeCount[i] = 0;
+		}
 	}
 
 	public float currentDistance()
 	{
-		return results [currentStep];
+		return initDistance * Mathf.Pow (stepDownRatio, currentLevel);
+//		return results [currentStep];
 	}
 
 	public bool finished()
@@ -71,22 +88,26 @@ public class StairCase
 			return;
 		}
 
-		if (currentStep > 0 && lastFeedback != false)
-		{
-			reversalResults[reversalCount] = results[currentStep];
-			reversalCount++;
-		}
+//		if (currentStep > 0 && lastFeedback != false)
+//		{
+//			reversalResults[reversalCount] = results[currentStep];
+//			reversalCount++;
+//		}
+//
+//		lastFeedback = false;
 
-		lastFeedback = false;
+		wrongCount [currentLevel]++;
 
-		if (reversalCount >= reversalMax)
+		if (currentStep >= totalTrials)
+//		if (reversalCount >= reversalMax)
 		{
 			outputResult();
 			return;
 		}
 		else
 		{
-			results[currentStep+1] = results[currentStep]*stepUpRatio;
+			currentLevel = Random.Range (0, sampleNumber);
+//			results[currentStep+1] = results[currentStep]*stepUpRatio;
 		}
 
 		currentStep++;
@@ -100,25 +121,34 @@ public class StairCase
 			return;
 		}
 		
-		if (currentStep > 0 && lastFeedback != true)
-		{
-			reversalResults[reversalCount] = results[currentStep];
-			reversalCount++;
-		}
+//		if (currentStep > 0 && lastFeedback != true)
+//		{
+//			reversalResults[reversalCount] = results[currentStep];
+//			reversalCount++;
+//		}
+//
+//		lastFeedback = true;
 
-		lastFeedback = true;
-		
-		if (reversalCount >= reversalMax)
+		rightCount [currentLevel]++;
+
+		if (currentStep >= totalTrials)
+//		if (reversalCount >= reversalMax)
 		{
 			outputResult();
 			return;
 		}
 		else
 		{
-			results[currentStep+1] = results[currentStep]*stepDownRatio;
+			currentLevel = Random.Range (0, sampleNumber);
+//			results[currentStep+1] = results[currentStep]*stepDownRatio;
 		}
 		
 		currentStep++;
+	}
+
+	public void feedbackDisagree()
+	{
+		disagreeCount [currentLevel]++;
 	}
 
 	public void outputResult()
@@ -126,25 +156,29 @@ public class StairCase
 		if (currentStep >= finalResultCount)
 		{
 			finalResult = 0;
-			for (int i = 0; i < finalResultCount; i++)
-			{
-				finalResult += Mathf.Log(reversalResults[reversalMax - i - 1], 2);
-			}
-			finalResult /= finalResultCount;
-			finalResult = Mathf.Pow(2, finalResult);
+//			for (int i = 0; i < finalResultCount; i++)
+//			{
+//				finalResult += Mathf.Log(reversalResults[reversalMax - i - 1], 2);
+//			}
+//			finalResult /= finalResultCount;
+//			finalResult = Mathf.Pow(2, finalResult);
 			
 			StreamWriter sw = File.AppendText("output/staircase-"+filename);
 			string label = "("+(stereo?"s+":"")+(montion?"m+":"")+(forceMove?"f+":"")+(!density?"b":"")+(PLC?"P":"")+(transparent?"a":"")+(tunneling?"t":"")+(uneven?"e":"")+")";
-			sw.Write(label+",");
-			for (int i = 0; i <= currentStep; i++)
-			{
-				sw.Write("{0},", results[i]);
-			}
-			sw.Write("\n");
+//			sw.Write(label+",");
+//			for (int i = 0; i <= currentStep; i++)
+//			{
+//				sw.Write("{0},", results[i]);
+//			}
+//			sw.Write("\n");
 			sw.Close();
 
 			sw = File.AppendText("output/result-"+filename);
 			sw.WriteLine(label+",{0}", finalResult);
+			for (int i = 0; i < sampleNumber; i++)
+			{
+				sw.WriteLine("{0},{1},{2}", initDistance * Mathf.Pow (stepDownRatio, i), (float)rightCount[i]/(wrongCount[i]+rightCount[i]), (float)disagreeCount[i]/(wrongCount[i]+rightCount[i]));
+			}
 			sw.Close();
 
 			Debug.Log("One experiment done!");
@@ -157,7 +191,8 @@ public class StairCase
 
 	public float completeRate()
 	{
-		return (float)reversalCount / reversalMax;
+		return (float)currentStep / totalTrials;
+//		return (float)reversalCount / reversalMax;
 	}
 }
 
@@ -186,6 +221,7 @@ public class scatterCluster : MonoBehaviour {
 	public bool pseudoObserver;
 	public Transform leftEye;
 	public Transform rightEye;
+	public Transform monoEye;
 
 	private Transform[] cluster;
 	private Transform redCube1, redCube2;
@@ -193,7 +229,7 @@ public class scatterCluster : MonoBehaviour {
 	private string filename;
 	private StairCase[] staircases;
 	private StairCase currentStaircase;
-	static private int staircaseCount = 3;
+	static private int staircaseCount = 2;
 	private int blockCaseCount;
 	private System.DateTime clusterTimestamp;
 	private bool timeoutPeriod;
@@ -255,9 +291,9 @@ public class scatterCluster : MonoBehaviour {
 //		staircases [2].forceMove = true;
 //		staircases [3] = new StairCase (false, true, true, false);
 		staircases [0] = new StairCase (false, false, true, false);
-		staircases [0].uneven = true;
+//		staircases [0].uneven = true;
 		staircases [1] = new StairCase (true, false, true, false);
-		staircases [2] = new StairCase (false, false, true, false);
+//		staircases [2] = new StairCase (false, false, true, false);
 //		staircases [5] = new StairCase (true, true, false, false);
 //		staircases [6] = new StairCase (true, true, true, true);
 //		staircases [7] = new StairCase (true, true, true, false);
@@ -659,11 +695,20 @@ public class scatterCluster : MonoBehaviour {
 		}
 		else if (pseudoObserver)
 		{
-			if (!observed && (System.DateTime.Now - clusterTimestamp).TotalSeconds > 1)
+			if (!observed && (System.DateTime.Now - clusterTimestamp).TotalSeconds > 0.1)
 			{
-				float leftVisibility = testVisibility(leftEye, redCube1) + testVisibility(rightEye, redCube1);
-				float rightVisibility = testVisibility(leftEye, redCube2) + testVisibility(rightEye, redCube2);
-				
+				float left1 = testVisibility(stereo?leftEye:monoEye, redCube1);
+				float left2 = testVisibility(stereo?leftEye:monoEye, redCube2);
+				float right1 = testVisibility(stereo?rightEye:monoEye, redCube1);
+				float right2 = testVisibility(stereo?rightEye:monoEye, redCube2);
+				float leftVisibility = left1 + right1;
+				float rightVisibility = left2 + right2;
+
+				if ((left1 >= left2) != (right1 >= right2))
+				{
+					currentStaircase.feedbackDisagree();
+				}
+
 				distanceDisplay.GetComponent<TextMesh> ().text = string.Format("{0}vs.{1}", leftVisibility/2, rightVisibility/2);
 
 				observedResult = (leftVisibility > rightVisibility);
@@ -671,7 +716,7 @@ public class scatterCluster : MonoBehaviour {
 				observed = true;
 			}
 
-			if ((System.DateTime.Now - clusterTimestamp).TotalSeconds > 1.1)
+			if ((System.DateTime.Now - clusterTimestamp).TotalSeconds > 0.1)
 			{
 				if (observedResult)
 				{
@@ -688,10 +733,10 @@ public class scatterCluster : MonoBehaviour {
 					
 					resetCluster();
 					
-					gracePeriod = true;
-					graceTimestamp = System.DateTime.Now;
+//					gracePeriod = true;
+//					graceTimestamp = System.DateTime.Now;
 					//maskCube.gameObject.SetActive(true);
-					completeDisplay.GetComponent<TextMesh> ().text = "";
+//					completeDisplay.GetComponent<TextMesh> ().text = "";
 				}
 				else
 				{
@@ -708,10 +753,10 @@ public class scatterCluster : MonoBehaviour {
 					
 					resetCluster();
 					
-					gracePeriod = true;
-					graceTimestamp = System.DateTime.Now;
+//					gracePeriod = true;
+//					graceTimestamp = System.DateTime.Now;
 					//maskCube.gameObject.SetActive(true);
-					completeDisplay.GetComponent<TextMesh> ().text = "";
+//					completeDisplay.GetComponent<TextMesh> ().text = "";
 				}
 			}
 		}
