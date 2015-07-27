@@ -21,13 +21,13 @@ public class StairCase
 	public string filename;
 
 	static int reversalMax = 20;
-	static float stepDownRatio = 0.6f;
+	static float stepDownRatio = 0.5f;
 	static float stepUpRatio = 2.19f;
 	static int finalResultCount = 16;
 
 	private bool lastFeedback;
 
-	static private int sampleNumber = 12;
+	static private int sampleNumber = 10;
 	static private int totalTrials = 10000;
 	static private float initDistance = 0.2f;
 	private int currentLevel;
@@ -557,9 +557,9 @@ public class scatterCluster : MonoBehaviour {
 		RaycastHit hit;
 		int hitCount = 0;
 		int totalCount = 0;
-		for (float xStep = -0.0059f; xStep < 0.0059f; xStep += 0.0001f)
+		for (float xStep = -redCube.localScale.x/2+0.0001f; xStep < redCube.localScale.x/2-0.0001f; xStep += 0.0001f)
 		{
-			for (float yStep = -0.0059f; yStep < 0.0059f; yStep += 0.0001f)
+			for (float yStep = -redCube.localScale.y/2+0.0001f; yStep < redCube.localScale.y/2+0.0001f; yStep += 0.0001f)
 			{
 				Physics.Raycast(start.position, end.position-start.position + new Vector3(xStep, yStep, 0), out hit);
 				if (hit.collider == end.gameObject.GetComponent<Collider> ())
