@@ -1207,7 +1207,7 @@ MonoBehaviour:
   blockCases: 150
   timeUntilRest: 10
   unevenRate: .5
-  pseudoObserver: 1
+  pseudoObserver: 0
   leftEye: {fileID: 510679344}
   rightEye: {fileID: 858475550}
   monoEye: {fileID: 1563724829}
@@ -1354,7 +1354,7 @@ Transform:
   m_GameObject: {fileID: 2009055228}
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: .0240000002, y: .0120000001, z: 9.99999975e-05}
+  m_LocalScale: {x: .0120000001, y: .0120000001, z: 9.99999975e-05}
   m_Children: []
   m_Father: {fileID: 1723140036}
   m_RootOrder: 1

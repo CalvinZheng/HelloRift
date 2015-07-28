@@ -13,6 +13,8 @@ public class StairCase
 	public bool transparent;
 	public bool tunneling;
 	public bool uneven;
+	public bool widen;
+	public bool hallow;
 	public int reversalCount;
 	public float[] results;
 	public float[] reversalResults;
@@ -20,13 +22,14 @@ public class StairCase
 	public int currentStep;
 	public string filename;
 
-	static int reversalMax = 20;
-	static float stepDownRatio = 0.5f;
+	static int reversalMax = 30;
+	static float stepDownRatio = 0.8f;
 	static float stepUpRatio = 2.19f;
-	static int finalResultCount = 16;
+	static int finalResultCount = 24;
 
 	private bool lastFeedback;
 
+	static bool samplingMode = false;
 	static private int sampleNumber = 10;
 	static private int totalTrials = 10000;
 	static private float initDistance = 0.2f;
@@ -46,6 +49,8 @@ public class StairCase
 		this.transparent = false;
 		this.tunneling = false;
 		this.uneven = false;
+		this.widen = false;
+		this.hallow = false;
 
 		results = new float[500];
 		for (int i = 0; i < 500; i++)
@@ -71,8 +76,10 @@ public class StairCase
 
 	public float currentDistance()
 	{
-		return initDistance * Mathf.Pow (stepDownRatio, currentLevel);
-//		return results [currentStep];
+		if (samplingMode)
+			return initDistance * Mathf.Pow (stepDownRatio, currentLevel);
+		else
+			return results [currentStep];
 	}
 
 	public bool finished()
@@ -88,26 +95,39 @@ public class StairCase
 			return;
 		}
 
-//		if (currentStep > 0 && lastFeedback != false)
-//		{
-//			reversalResults[reversalCount] = results[currentStep];
-//			reversalCount++;
-//		}
-//
-//		lastFeedback = false;
-
-		wrongCount [currentLevel]++;
-
-		if (currentStep >= totalTrials)
-//		if (reversalCount >= reversalMax)
+		if (samplingMode)
 		{
-			outputResult();
-			return;
+			wrongCount [currentLevel]++;
+
+			if (currentStep >= totalTrials)
+			{
+				outputResult();
+				return;
+			}
+			else
+			{
+				currentLevel = Random.Range (0, sampleNumber);
+			}
 		}
 		else
 		{
-			currentLevel = Random.Range (0, sampleNumber);
-//			results[currentStep+1] = results[currentStep]*stepUpRatio;
+			if (currentStep > 0 && lastFeedback != false)
+			{
+				reversalResults[reversalCount] = results[currentStep];
+				reversalCount++;
+			}
+			
+			lastFeedback = false;
+			
+			if (reversalCount >= reversalMax)
+			{
+				outputResult();
+				return;
+			}
+			else
+			{
+				results[currentStep+1] = results[currentStep]*stepUpRatio;
+			}
 		}
 
 		currentStep++;
@@ -121,26 +141,39 @@ public class StairCase
 			return;
 		}
 		
-//		if (currentStep > 0 && lastFeedback != true)
-//		{
-//			reversalResults[reversalCount] = results[currentStep];
-//			reversalCount++;
-//		}
-//
-//		lastFeedback = true;
-
-		rightCount [currentLevel]++;
-
-		if (currentStep >= totalTrials)
-//		if (reversalCount >= reversalMax)
+		if (samplingMode)
 		{
-			outputResult();
-			return;
+			rightCount [currentLevel]++;
+
+			if (currentStep >= totalTrials)
+			{
+				outputResult();
+				return;
+			}
+			else
+			{
+				currentLevel = Random.Range (0, sampleNumber);
+			}
 		}
 		else
 		{
-			currentLevel = Random.Range (0, sampleNumber);
-//			results[currentStep+1] = results[currentStep]*stepDownRatio;
+			if (currentStep > 0 && lastFeedback != true)
+			{
+				reversalResults[reversalCount] = results[currentStep];
+				reversalCount++;
+			}
+			
+			lastFeedback = true;
+			
+			if (reversalCount >= reversalMax)
+			{
+				outputResult();
+				return;
+			}
+			else
+			{
+				results[currentStep+1] = results[currentStep]*stepDownRatio;
+			}
 		}
 		
 		currentStep++;
@@ -151,33 +184,47 @@ public class StairCase
 		disagreeCount [currentLevel]++;
 	}
 
+	public string conditionLabel()
+	{
+		return "("+(stereo?"s+":"")+(montion?"m+":"")+(forceMove?"f+":"")+(!density?"b+":"")+(PLC?"P":"")+(transparent?"a":"")+(tunneling?"t":"")+(uneven?"e":"")+(hallow?"h":"")+(widen?"w":"")+")";
+	}
+
 	public void outputResult()
 	{
 		if (currentStep >= finalResultCount)
 		{
 			finalResult = 0;
-//			for (int i = 0; i < finalResultCount; i++)
-//			{
-//				finalResult += Mathf.Log(reversalResults[reversalMax - i - 1], 2);
-//			}
-//			finalResult /= finalResultCount;
-//			finalResult = Mathf.Pow(2, finalResult);
+			if (!samplingMode)
+			{
+				for (int i = 0; i < finalResultCount; i++)
+				{
+					finalResult += Mathf.Log(reversalResults[reversalMax - i - 1], 2);
+				}
+				finalResult /= finalResultCount;
+				finalResult = Mathf.Pow(2, finalResult);
+			}
 			
 			StreamWriter sw = File.AppendText("output/staircase-"+filename);
-			string label = "("+(stereo?"s+":"")+(montion?"m+":"")+(forceMove?"f+":"")+(!density?"b":"")+(PLC?"P":"")+(transparent?"a":"")+(tunneling?"t":"")+(uneven?"e":"")+")";
-//			sw.Write(label+",");
-//			for (int i = 0; i <= currentStep; i++)
-//			{
-//				sw.Write("{0},", results[i]);
-//			}
-//			sw.Write("\n");
+			string label = conditionLabel();
+			if (!samplingMode)
+			{
+				sw.Write(label+",");
+				for (int i = 0; i <= currentStep; i++)
+				{
+					sw.Write("{0},", results[i]);
+				}
+				sw.Write("\n");
+			}
 			sw.Close();
 
 			sw = File.AppendText("output/result-"+filename);
 			sw.WriteLine(label+",{0}", finalResult);
-			for (int i = 0; i < sampleNumber; i++)
+			if (samplingMode)
 			{
-				sw.WriteLine("{0},{1},{2}", initDistance * Mathf.Pow (stepDownRatio, i), (float)rightCount[i]/(wrongCount[i]+rightCount[i]), (float)disagreeCount[i]/(wrongCount[i]+rightCount[i]));
+				for (int i = 0; i < sampleNumber; i++)
+				{
+					sw.WriteLine("{0},{1},{2}", initDistance * Mathf.Pow (stepDownRatio, i), (float)rightCount[i]/(wrongCount[i]+rightCount[i]), (float)disagreeCount[i]/(wrongCount[i]+rightCount[i]));
+				}
 			}
 			sw.Close();
 
@@ -191,8 +238,14 @@ public class StairCase
 
 	public float completeRate()
 	{
-		return (float)currentStep / totalTrials;
-//		return (float)reversalCount / reversalMax;
+		if (samplingMode)
+		{
+			return (float)currentStep / totalTrials;
+		}
+		else
+		{
+			return (float)reversalCount / reversalMax;
+		}
 	}
 }
 
@@ -229,7 +282,7 @@ public class scatterCluster : MonoBehaviour {
 	private string filename;
 	private StairCase[] staircases;
 	private StairCase currentStaircase;
-	static private int staircaseCount = 2;
+	static private int staircaseCount = 6;
 	private int blockCaseCount;
 	private System.DateTime clusterTimestamp;
 	private bool timeoutPeriod;
@@ -290,9 +343,22 @@ public class scatterCluster : MonoBehaviour {
 //		staircases [2] = new StairCase (true, false, true, false);
 //		staircases [2].forceMove = true;
 //		staircases [3] = new StairCase (false, true, true, false);
-		staircases [0] = new StairCase (false, false, true, false);
-//		staircases [0].uneven = true;
+		staircases [0] = new StairCase (true, false, true, false);
+		staircases [0].widen = true;
 		staircases [1] = new StairCase (true, false, true, false);
+		staircases [2] = new StairCase (true, false, true, false);
+		staircases [2].uneven = true;
+		staircases [2].widen = true;
+		staircases [3] = new StairCase (true, false, true, false);
+		staircases [3].uneven = true;
+		staircases [4] = new StairCase (true, false, true, false);
+		staircases [4].hallow = true;
+		staircases [4].widen = true;
+		staircases [5] = new StairCase (true, false, true, false);
+		staircases [5].hallow = true;
+//		staircases [2] = new StairCase (true, false, true, false);
+//		staircases [2].widen = true;
+//		staircases [3] = new StairCase (true, false, true, false);
 //		staircases [2] = new StairCase (false, false, true, false);
 //		staircases [5] = new StairCase (true, true, false, false);
 //		staircases [6] = new StairCase (true, true, true, true);
@@ -420,8 +486,7 @@ public class scatterCluster : MonoBehaviour {
 //			blockCaseCount++;
 		}
 
-		statusDisplay.GetComponent<TextMesh>().text = 
-			(stereo?"stereo+":"")+(montion?"montion+":"")+(currentStaircase.forceMove?"force+":"")+(PLC?"PLC":"")+(transparent?"transparent":"")+(tunneling?"tunneling":"")+(currentStaircase.uneven?"uneven":"");
+		statusDisplay.GetComponent<TextMesh>().text = currentStaircase.conditionLabel();
 
 		OVRManager.instance.monoscopic = !stereo;
 		OVRCameraRig.disablePositionTracking = !montion;
@@ -446,7 +511,8 @@ public class scatterCluster : MonoBehaviour {
 		}
 		redCube1 = Instantiate (redCube) as Transform;
 		redCube1.gameObject.SetActive (true);
-		redCube1.position = new Vector3 (-maxHeight/4 + (Random.value-0.5f)*2*maxHeight/20*1.5f,
+		redCube1.localScale += new Vector3 (currentStaircase.widen ? redCube.localScale.x*2 : 0, 0, 0);
+		redCube1.position = new Vector3 (-maxHeight/4 - (currentStaircase.widen ? redCube.localScale.x : 0) + (Random.value-0.5f)*2*maxHeight/20*1.5f,
 		                                 maxHeight/2 + (Random.value-0.5f)*2*maxHeight/20*1.5f,
 		                                 maxHeight/2+(leftFirst?1:-1)*currentDistance/2);
 
@@ -456,7 +522,8 @@ public class scatterCluster : MonoBehaviour {
 		}
 		redCube2 = Instantiate (redCube) as Transform;
 		redCube2.gameObject.SetActive (true);
-		redCube2.position = new Vector3 (maxHeight/4 + (Random.value-0.5f)*2*maxHeight/20*1.5f,
+		redCube2.localScale += new Vector3 (currentStaircase.widen ? redCube.localScale.x*2 : 0, 0, 0);
+		redCube2.position = new Vector3 (maxHeight/4 + (currentStaircase.widen ? redCube.localScale.x : 0) + (Random.value-0.5f)*2*maxHeight/20*1.5f,
 		                                 maxHeight/2 + (Random.value-0.5f)*2*maxHeight/20*1.5f,
 		                                 maxHeight/2+(!leftFirst?1:-1)*currentDistance/2);
 
@@ -502,6 +569,18 @@ public class scatterCluster : MonoBehaviour {
 						}
 					}
 					cluster[i].position = new Vector3(x,y,z);
+				}
+				else if (currentStaircase.hallow)
+				{
+					if (Random.value > 0.5f)
+					{
+						cluster[i].position = new Vector3(Random.value*maxHeight-maxHeight/2, Random.value*maxHeight, Random.value*Mathf.Min (redCube1.position.z, redCube2.position.z));
+					}
+					else
+					{
+						cluster[i].position = new Vector3(Random.value*maxHeight-maxHeight/2, Random.value*maxHeight, 
+						                                  Random.Range(Mathf.Max (redCube1.position.z, redCube2.position.z), maxHeight));
+					}
 				}
 				else
 				{
@@ -605,30 +684,30 @@ public class scatterCluster : MonoBehaviour {
 			}
 		}
 
-		if (size)
-		{
-			redCube1.localScale = redCube.localScale * (character.position.z - redCube1.position.z) / (character.position.z - maxHeight/2);
-			redCube2.localScale = redCube.localScale * (character.position.z - redCube2.position.z) / (character.position.z - maxHeight/2);
-			for (int i = 0; i < fragCount; i++)
-			{
-				if (cluster[i] != null)
-				{
-					cluster[i].localScale = fragment.localScale * (character.position.z - cluster[i].position.z) / (character.position.z - maxHeight/2);
-				}
-			}
-		}
-		else
-		{
-			redCube1.localScale = redCube.localScale;
-			redCube2.localScale = redCube.localScale;
-			for (int i = 0; i < fragCount; i++)
-			{
-				if (cluster[i] != null)
-				{
-					cluster[i].localScale = fragment.localScale;
-				}
-			}
-		}
+//		if (size)
+//		{
+//			redCube1.localScale = redCube.localScale * (character.position.z - redCube1.position.z) / (character.position.z - maxHeight/2);
+//			redCube2.localScale = redCube.localScale * (character.position.z - redCube2.position.z) / (character.position.z - maxHeight/2);
+//			for (int i = 0; i < fragCount; i++)
+//			{
+//				if (cluster[i] != null)
+//				{
+//					cluster[i].localScale = fragment.localScale * (character.position.z - cluster[i].position.z) / (character.position.z - maxHeight/2);
+//				}
+//			}
+//		}
+//		else
+//		{
+//			redCube1.localScale = redCube.localScale;
+//			redCube2.localScale = redCube.localScale;
+//			for (int i = 0; i < fragCount; i++)
+//			{
+//				if (cluster[i] != null)
+//				{
+//					cluster[i].localScale = fragment.localScale;
+//				}
+//			}
+//		}
 		
 		if (Input.GetKeyDown(KeyCode.LeftControl))
 		{
@@ -874,7 +953,7 @@ public class scatterCluster : MonoBehaviour {
 
 		if (!continousMode)
 		{
-			//distanceDisplay.GetComponent<TextMesh> ().text = string.Format("{0}", currentStaircase.currentDistance());
+			distanceDisplay.GetComponent<TextMesh> ().text = string.Format("{0}", currentStaircase.currentDistance());
 			float progress = 0;
 			foreach (StairCase aStaircase in staircases)
 			{
