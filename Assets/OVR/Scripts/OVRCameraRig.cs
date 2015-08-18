@@ -144,7 +144,7 @@ public class OVRCameraRig : MonoBehaviour
 
 		Vector3 newCenter;
 		newCenter.x = Mathf.Min(Mathf.Max (-0.15f, centerEyeAnchor.localPosition.x), 0.15f);
-		newCenter.y = Mathf.Min(Mathf.Max (-0.05f, centerEyeAnchor.localPosition.y), 0.05f);
+		newCenter.y = 0;
 		newCenter.z = Mathf.Min(Mathf.Max (-0.05f, centerEyeAnchor.localPosition.z), 0.05f);
 		centerEyeAnchor.localPosition = newCenter;
 
