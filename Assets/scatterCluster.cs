@@ -335,19 +335,26 @@ public class scatterCluster : MonoBehaviour {
 			sw.Close();
 		}
 
-		staircaseCount = 1;
+		staircaseCount = 4;
 		staircases = new StairCase[staircaseCount];
 
-//		staircases [0] = new StairCase(true, true, true, false, false, false, false);
-//		staircases [1] = new StairCase(true, false, true, false, false, false, false);
-//		staircases [2] = new StairCase(true, true, true, false, false, false, true);
+//		*EXAMPLE* new StairCase(istereo, imontion, dense, hollow, uneven, widen, strip);
+		
+		staircases [0] = new StairCase(false, false, true, false, false, false, false);
+		staircases [0].size = false;
+		
+		staircases [1] = new StairCase(false, false, true, false, true, false, false);
+		staircases [1].size = false;
+		
+		staircases [2] = new StairCase(false, false, true, false, false, false, false);
+		staircases [2].size = true;
+		
+		staircases [3] = new StairCase(false, false, true, false, true, false, false);
+		staircases [3].size = true;
 
 //		staircases [0] = new StairCase(true, true, false, false, false, false, false);
 //		staircases [0].size = true;
-		
-		staircases [0] = new StairCase(true, false, true, false, true, false, true);
-		staircases [0].size = true;
-
+//
 //		for (int i = 0; i < 6; i++)
 //		{
 //			bool hollow = i < 3;
@@ -375,7 +382,7 @@ public class scatterCluster : MonoBehaviour {
 //			staircases [i+10] = new StairCase(istereo, imotion, true, hollow, uneven, false, true);
 //			staircases [i+10].size = false;
 //		}
-		
+//		
 //		for (int i = 0; i < staircaseCount; i++)
 //		{
 //			bool istereo = false;
@@ -754,7 +761,12 @@ public class scatterCluster : MonoBehaviour {
 				totalCount++;
 			}
 		}
-		return (float)hitCount / totalCount;//*Mathf.Pow(12*Mathf.Sqrt(3)/(1.2f+end.position.z*2),2);
+		float result = (float)hitCount / totalCount;
+		if (currentStaircase.size)
+		{
+			result *= Mathf.Pow(12*Mathf.Sqrt(3)/(1.2f+end.position.z*2),2);
+		}
+		return result;
 	}
 	
 	// Update is called once per frame
