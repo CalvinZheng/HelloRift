@@ -26,7 +26,7 @@ public class StairCase
 	public string filename;
 
 	static int reversalMax = 20;
-	static float stepDownRatio = 0.8f;
+	static float stepDownRatio = 0.7f;
 	static float stepUpRatio = 2.19f;
 	static int finalResultCount = 16;
 
@@ -286,6 +286,8 @@ public class scatterCluster : MonoBehaviour {
 	public Transform rightEye;
 	public Transform monoEye;
 	public Transform shields;
+	public Transform shield1;
+	public Transform shield2;
 
 	private Transform[] cluster;
 	private Transform redCube1, redCube2;
@@ -335,22 +337,19 @@ public class scatterCluster : MonoBehaviour {
 			sw.Close();
 		}
 
-		staircaseCount = 4;
+		staircaseCount = 3;
 		staircases = new StairCase[staircaseCount];
 
 //		*EXAMPLE* new StairCase(istereo, imontion, dense, hollow, uneven, widen, strip);
 		
-		staircases [0] = new StairCase(false, false, true, false, false, false, false);
+		staircases [0] = new StairCase(false, false, true, false, false, false, true);
 		staircases [0].size = false;
 		
-		staircases [1] = new StairCase(false, false, true, false, true, false, false);
+		staircases [1] = new StairCase(true, false, true, false, false, false, true);
 		staircases [1].size = false;
 		
-		staircases [2] = new StairCase(false, false, true, false, false, false, false);
-		staircases [2].size = true;
-		
-		staircases [3] = new StairCase(false, false, true, false, true, false, false);
-		staircases [3].size = true;
+		staircases [2] = new StairCase(false, false, true, true, false, false, true);
+		staircases [2].size = false;
 
 //		staircases [0] = new StairCase(true, true, false, false, false, false, false);
 //		staircases [0].size = true;
@@ -754,11 +753,15 @@ public class scatterCluster : MonoBehaviour {
 			for (float yStep = -redCube.localScale.y/2+0.0001f; yStep < redCube.localScale.y/2-0.0001f; yStep += 0.0001f)
 			{
 				Physics.Raycast(start.position, end.position-start.position + new Vector3(xStep, yStep, 0), out hit);
+				if (hit.collider != shield1.gameObject.GetComponent<Collider> ()
+				    && hit.collider != shield2.gameObject.GetComponent<Collider> () )
+				{
+					totalCount++;
+				}
 				if (hit.collider == end.gameObject.GetComponent<Collider> ())
 				{
 					hitCount++;
 				}
-				totalCount++;
 			}
 		}
 		float result = (float)hitCount / totalCount;
@@ -883,7 +886,7 @@ public class scatterCluster : MonoBehaviour {
 		}
 		else if (restPeriod)
 		{
-			if (Input.GetKeyDown ("space"))
+			//if (Input.GetKeyDown ("space"))
 			{
 				restPeriod = false;
 				maskCube.gameObject.SetActive(false);
@@ -892,7 +895,7 @@ public class scatterCluster : MonoBehaviour {
 		}
 		else if (pseudoObserver)
 		{
-			if (!observed && (System.DateTime.Now - clusterTimestamp).TotalSeconds > 0.1)
+			if (!observed && (System.DateTime.Now - clusterTimestamp).TotalSeconds > 0.01)
 			{
 				float left1 = testVisibility(stereo?leftEye:monoEye, redCube1);
 				float left2 = testVisibility(stereo?leftEye:monoEye, redCube2);
@@ -913,7 +916,7 @@ public class scatterCluster : MonoBehaviour {
 				observed = true;
 			}
 
-			if ((System.DateTime.Now - clusterTimestamp).TotalSeconds > 0.1)
+			if ((System.DateTime.Now - clusterTimestamp).TotalSeconds > 0.01)
 			{
 				if (observedResult)
 				{
@@ -1071,7 +1074,7 @@ public class scatterCluster : MonoBehaviour {
 
 		if (!continousMode)
 		{
-			distanceDisplay.GetComponent<TextMesh> ().text = string.Format("{0}", currentStaircase.currentDistance());
+			//distanceDisplay.GetComponent<TextMesh> ().text = string.Format("{0}", currentStaircase.currentDistance());
 			float progress = 0;
 			foreach (StairCase aStaircase in staircases)
 			{

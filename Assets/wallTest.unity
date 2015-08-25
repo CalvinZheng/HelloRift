@@ -1533,6 +1533,8 @@ MonoBehaviour:
   rightEye: {fileID: 858475550}
   monoEye: {fileID: 1563724829}
   shields: {fileID: 211874623}
+  shield1: {fileID: 1200477719}
+  shield2: {fileID: 210290808}
 --- !u!1 &1785417736
 GameObject:
   m_ObjectHideFlags: 0
