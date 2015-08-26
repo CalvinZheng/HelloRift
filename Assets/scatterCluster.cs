@@ -26,7 +26,7 @@ public class StairCase
 	public string filename;
 
 	static int reversalMax = 20;
-	static float stepDownRatio = 0.7f;
+	static float stepDownRatio = 0.8f;
 	static float stepUpRatio = 2.19f;
 	static int finalResultCount = 16;
 
@@ -34,7 +34,7 @@ public class StairCase
 
 	static bool samplingMode = true;
 	static private int sampleNumber = 10;
-	static private int totalTrials = 10000;
+	static private int totalTrials = 1000;
 	static private float initDistance = 0.2f;
 	private int currentLevel;
 	private int[] rightCount;
@@ -337,19 +337,13 @@ public class scatterCluster : MonoBehaviour {
 			sw.Close();
 		}
 
-		staircaseCount = 3;
+		staircaseCount = 1;
 		staircases = new StairCase[staircaseCount];
 
 //		*EXAMPLE* new StairCase(istereo, imontion, dense, hollow, uneven, widen, strip);
 		
-		staircases [0] = new StairCase(false, false, true, false, false, false, true);
-		staircases [0].size = false;
-		
-		staircases [1] = new StairCase(true, false, true, false, false, false, true);
-		staircases [1].size = false;
-		
-		staircases [2] = new StairCase(false, false, true, true, false, false, true);
-		staircases [2].size = false;
+		staircases [0] = new StairCase(true, false, true, false, true, false, false);
+		staircases [0].size = true;
 
 //		staircases [0] = new StairCase(true, true, false, false, false, false, false);
 //		staircases [0].size = true;
@@ -690,10 +684,27 @@ public class scatterCluster : MonoBehaviour {
 				Bounds clusterBounds = cluster[i].GetComponent<Collider>().bounds;
 				clusterBounds.extents = new Vector3(1,1,1)*fragment.localScale.x*Mathf.Sqrt(2)/2;
 
-				if (redCube1.GetComponent<Collider>().bounds.Intersects(clusterBounds) || redCube2.GetComponent<Collider>().bounds.Intersects(clusterBounds))
+				if (redCube1.GetComponent<Collider>().bounds.Intersects(clusterBounds))
 				{
-					//Debug.Log("Intersect!");
-					continue;
+					if (cluster[i].position.z > redCube1.position.z)
+					{
+						cluster[i].position += new Vector3(0, 0, fragment.localScale.x*Mathf.Sqrt(2)/2);
+					}
+					else
+					{
+						cluster[i].position -= new Vector3(0, 0, fragment.localScale.x*Mathf.Sqrt(2)/2);
+					}
+				}
+				if (redCube2.GetComponent<Collider>().bounds.Intersects(clusterBounds))
+				{
+					if (cluster[i].position.z > redCube2.position.z)
+					{
+						cluster[i].position += new Vector3(0, 0, fragment.localScale.x*Mathf.Sqrt(2)/2);
+					}
+					else
+					{
+						cluster[i].position -= new Vector3(0, 0, fragment.localScale.x*Mathf.Sqrt(2)/2);
+					}
 				}
 
 				if (!tunneling)
@@ -748,9 +759,10 @@ public class scatterCluster : MonoBehaviour {
 		RaycastHit hit;
 		int hitCount = 0;
 		int totalCount = 0;
-		for (float xStep = -redCube.localScale.x/2+0.0001f; xStep < redCube.localScale.x/2-0.0001f; xStep += 0.0001f)
+		float minX = 999, maxX = -999, minY = 999, maxY = -999;
+		for (float xStep = -end.localScale.x/2+0.001f; xStep < end.localScale.x/2-0.001f; xStep += 0.001f)
 		{
-			for (float yStep = -redCube.localScale.y/2+0.0001f; yStep < redCube.localScale.y/2-0.0001f; yStep += 0.0001f)
+			for (float yStep = -end.localScale.y/2+0.001f; yStep < end.localScale.y/2-0.001f; yStep += 0.001f)
 			{
 				Physics.Raycast(start.position, end.position-start.position + new Vector3(xStep, yStep, 0), out hit);
 				if (hit.collider != shield1.gameObject.GetComponent<Collider> ()
@@ -760,7 +772,16 @@ public class scatterCluster : MonoBehaviour {
 				}
 				if (hit.collider == end.gameObject.GetComponent<Collider> ())
 				{
+					//Debug.DrawLine(start.position, end.position + new Vector3(xStep, yStep, 0), Color.red, 3, false);
 					hitCount++;
+					if (xStep < minX)
+						minX = xStep;
+					if (xStep > maxX)
+						maxX = xStep;
+					if (yStep < minY)
+						minY = yStep;
+					if (yStep > maxY)
+						maxY = yStep;
 				}
 			}
 		}
@@ -769,8 +790,16 @@ public class scatterCluster : MonoBehaviour {
 		{
 			result *= Mathf.Pow(12*Mathf.Sqrt(3)/(1.2f+end.position.z*2),2);
 		}
+
+		if (currentStaircase.size && (currentStaircase.uneven || currentStaircase.hollow) && !(currentStaircase.uneven && currentStaircase.hollow))
+		{
+			result = Mathf.Max (maxX - minX, maxY - minY);
+			result /= end.position.z - start.position.z;
+		}
 		return result;
 	}
+
+
 	
 	// Update is called once per frame
 	void Update ()
