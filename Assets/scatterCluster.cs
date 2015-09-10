@@ -25,14 +25,14 @@ public class StairCase
 	public int currentStep;
 	public string filename;
 
-	static int reversalMax = 20;
+	static int reversalMax = 12;
 	static float stepDownRatio = 0.8f;
 	static float stepUpRatio = 2.19f;
-	static int finalResultCount = 16;
+	static int finalResultCount = 10;
 
 	private bool lastFeedback;
 
-	static bool samplingMode = true;
+	static bool samplingMode = false;
 	static private int sampleNumber = 10;
 	static private int totalTrials = 1000;
 	static private float initDistance = 0.2f;
@@ -337,67 +337,34 @@ public class scatterCluster : MonoBehaviour {
 			sw.Close();
 		}
 
-		staircaseCount = 1;
+		staircaseCount = 26;
 		staircases = new StairCase[staircaseCount];
 
 //		*EXAMPLE* new StairCase(istereo, imontion, dense, hollow, uneven, widen, strip);
-		
-		staircases [0] = new StairCase(true, false, true, false, true, false, false);
-		staircases [0].size = true;
 
-//		staircases [0] = new StairCase(true, true, false, false, false, false, false);
-//		staircases [0].size = true;
-//
-//		for (int i = 0; i < 6; i++)
-//		{
-//			bool hollow = i < 3;
-//			bool isize = i >= 3;
-//			bool istereo = i%3 == 0 || i%3 == 2;
-//			bool imotion = i%3 == 1 || i%3 == 2;
-//			staircases [i+1] = new StairCase(istereo, imotion, true, hollow, false, false, false);
-//			staircases [i+1].size = isize;
-//		}
-//
-//		for (int i = 0; i < 3; i++)
-//		{
-//			bool uneven = i == 2;
-//			bool isize = i%2 == 0;
-//			staircases [i+7] = new StairCase(false, false, true, false, uneven, false, false);
-//			staircases [i+7].size = isize;
-//		}
-//
-//		for (int i = 0; i < 9; i++)
-//		{
-//			bool istereo = i/3 == 0 || i/3 == 1;
-//			bool imotion = i/3 == 2 || i/3 == 1;
-//			bool uneven = i%3 == 0 || i%3 == 1;
-//			bool hollow = i%3 == 1;
-//			staircases [i+10] = new StairCase(istereo, imotion, true, hollow, uneven, false, true);
-//			staircases [i+10].size = false;
-//		}
-//		
-//		for (int i = 0; i < staircaseCount; i++)
-//		{
-//			bool istereo = false;
-//			bool imontion = false;
-//			bool widen = (i%2==0);
-//			bool baseline = false;
-//			//bool uniform = (i/2%5 == 1);
-//			bool hollow = false;//(i/2%4 == 0);
-//			bool uneven = false;//(i/2%4 == 1);
-//			bool strip = false;//(i/2%4 == 2);
-//			if (strip)
-//			{
-//				widen = false;
-//				//uniform = (i%2 == 0);
-//				//uneven = (i%2 == 1);
-//			}
-//			
-//			staircases [i] = new StairCase(istereo, imontion, !baseline, hollow, uneven, widen, strip);
-//
-//			staircases [i].size = true;
-//			staircases [i].randomSize = false;
-//		}
+		staircases [0] = new StairCase(true, true, false, false, false, false, false);
+		staircases [0].size = false;
+
+		for (int i = 0; i < 14; i++)
+		{
+			bool hollow = i%4 == 1 || i%4 == 2;
+			bool uneven = i%4 == 1 || i%4 == 3;
+			bool isize = false;
+			bool istereo = i/4 == 0 || i/4 == 2;
+			bool imotion = i/4 == 1 || i/4 == 2;
+			staircases [i+1] = new StairCase(istereo, imotion, true, hollow, uneven, false, false);
+			staircases [i+1].size = isize;
+		}
+
+		for (int i = 0; i < 11; i++)
+		{
+			bool hollow = i%3 == 1;
+			bool uneven = i%3 == 1 || i%3 == 2;
+			bool istereo = i/3 == 0 || i/3 == 2;
+			bool imotion = i/3 == 1 || i/3 == 2;
+			staircases [i+15] = new StairCase(istereo, imotion, true, hollow, uneven, false, true);
+			staircases [i+15].size = false;
+		}
 		
 		stereo = true;
 		montion = true;
@@ -915,7 +882,7 @@ public class scatterCluster : MonoBehaviour {
 		}
 		else if (restPeriod)
 		{
-			//if (Input.GetKeyDown ("space"))
+			if (Input.GetKeyDown ("space"))
 			{
 				restPeriod = false;
 				maskCube.gameObject.SetActive(false);

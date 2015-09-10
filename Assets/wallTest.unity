@@ -1528,7 +1528,7 @@ MonoBehaviour:
   blockCases: 150
   timeUntilRest: 10
   unevenRate: .5
-  pseudoObserver: 1
+  pseudoObserver: 0
   leftEye: {fileID: 510679344}
   rightEye: {fileID: 858475550}
   monoEye: {fileID: 1563724829}
