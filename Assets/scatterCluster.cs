@@ -196,7 +196,7 @@ public class StairCase
 
 	public string conditionLabel()
 	{
-		return "("+(strip?"bar+":"")+(stereo?"stereo+":"")+(montion?"motion+":"")+(!density?"base+":"")+(size?"size+":"")+(randomSize?"Rsize+":"")+(uneven?"50/50+":"")+(hollow?"hollow+":"")+(widen?"widen":"")+")";
+		return "("+(strip?"bar+":"")+(stereo?"stereo+":"")+(montion?"motion+":"")+(!density?"base+":"")+(size?"size+":"")+(randomSize?"Rsize+":"")+(uneven?"50/50+":"")+(hollow?"hollow+":"")+")";
 	}
 
 	public void outputResult()
@@ -342,7 +342,7 @@ public class scatterCluster : MonoBehaviour {
 
 //		*EXAMPLE* new StairCase(istereo, imontion, dense, hollow, uneven, widen, strip);
 
-		staircases [0] = new StairCase(true, true, false, false, false, false, false);
+		staircases [0] = new StairCase(true, true, false, false, false, true, false);
 		staircases [0].size = false;
 
 		for (int i = 0; i < 14; i++)
@@ -352,7 +352,7 @@ public class scatterCluster : MonoBehaviour {
 			bool isize = false;
 			bool istereo = i/4 == 0 || i/4 == 2;
 			bool imotion = i/4 == 1 || i/4 == 2;
-			staircases [i+1] = new StairCase(istereo, imotion, true, hollow, uneven, false, false);
+			staircases [i+1] = new StairCase(istereo, imotion, true, hollow, uneven, true, false);
 			staircases [i+1].size = isize;
 		}
 
@@ -459,26 +459,12 @@ public class scatterCluster : MonoBehaviour {
 				return;
 			}
 
-//			if (blockCaseCount == 0)
+//			if (checkIfAvailableForSameBlock())
 //			{
 //				while(true)
 //				{
-//					int randIndex = Random.Range(0,16);
-//					if (!staircases[randIndex].finished())
-//					{
-//						currentStaircase = staircases[randIndex];
-//						break;
-//					}
-//				}
-//			}
-//			else if (blockCaseCount < blockCases && checkIfAvailableForSameBlock())
-//			{
-//				while(true)
-//				{
-//					int randIndex = Random.Range(0,16);
-//					if (!staircases[randIndex].finished()
-//					    && staircases[randIndex].stereo == currentStaircase.stereo
-//					    && staircases[randIndex].montion == currentStaircase.montion)
+//					int randIndex = Random.Range(0,staircaseCount);
+//					if (!staircases[randIndex].finished() && staircases[randIndex].stereo == currentStaircase.stereo && staircases[randIndex].montion == currentStaircase.montion)
 //					{
 //						currentStaircase = staircases[randIndex];
 //						break;
@@ -487,8 +473,18 @@ public class scatterCluster : MonoBehaviour {
 //			}
 //			else
 //			{
-//				blockCaseCount = 0;
+//				while(true)
+//				{
+//					int randIndex = Random.Range(0,staircaseCount);
+//					if (!staircases[randIndex].finished())
+//					{
+//						currentStaircase = staircases[randIndex];
+//						break;
+//					}
+//				}
+//
 //				restPeriod = true;
+//
 //				return;
 //			}
 
@@ -500,8 +496,6 @@ public class scatterCluster : MonoBehaviour {
 			transparent = currentStaircase.transparent;
 			PLC = currentStaircase.PLC;
 			currentDistance = Mathf.Min(currentStaircase.currentDistance(), maxHeight+0.02f);
-
-//			blockCaseCount++;
 		}
 
 		statusDisplay.GetComponent<TextMesh>().text = currentStaircase.conditionLabel();
@@ -555,19 +549,19 @@ public class scatterCluster : MonoBehaviour {
 
 			redCube1 = Instantiate (redCube) as Transform;
 			redCube1.gameObject.SetActive (true);
-			redCube1.localScale += new Vector3 (currentStaircase.widen ? redCube.localScale.x*2 : 0, 0, 0);
+			redCube1.localScale += new Vector3 (currentStaircase.widen ? redCube.localScale.x : 0, 0, 0);
 			if (currentStaircase.randomSize)
 				redCube1.localScale *= (leftBig ? 1.2f : 0.8f);
-			redCube1.position = new Vector3 (-maxHeight/4 - (currentStaircase.widen ? redCube.localScale.x : 0) + (Random.value-0.5f)*2*maxHeight/20,
+			redCube1.position = new Vector3 (-maxHeight/4 - (currentStaircase.widen ? redCube.localScale.x/2 : 0) + (Random.value-0.5f)*2*maxHeight/20,
 			                                 maxHeight/2 + (Random.value-0.5f)*2*maxHeight/20*1.5f,
 			                                 maxHeight/2+(rightFirst?1:-1)*currentDistance/2);
 
 			redCube2 = Instantiate (redCube) as Transform;
 			redCube2.gameObject.SetActive (true);
-			redCube2.localScale += new Vector3 (currentStaircase.widen ? redCube.localScale.x*2 : 0, 0, 0);
+			redCube2.localScale += new Vector3 (currentStaircase.widen ? redCube.localScale.x : 0, 0, 0);
 			if (currentStaircase.randomSize)
 				redCube2.localScale *= (!leftBig ? 1.2f : 0.8f);
-			redCube2.position = new Vector3 (maxHeight/4 + (currentStaircase.widen ? redCube.localScale.x : 0) + (Random.value-0.5f)*2*maxHeight/20,
+			redCube2.position = new Vector3 (maxHeight/4 + (currentStaircase.widen ? redCube.localScale.x/2 : 0) + (Random.value-0.5f)*2*maxHeight/20,
 			                                 maxHeight/2 + (Random.value-0.5f)*2*maxHeight/20*1.5f,
 			                                 maxHeight/2+(!rightFirst?1:-1)*currentDistance/2);
 
