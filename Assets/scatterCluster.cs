@@ -32,6 +32,7 @@ public class Staircase
 
 	private bool lastFeedback;
 
+	//If you want the experiments to run at specified distances for multiple time, instead of staircase method, set samplingMode to true. We usually run idealObserver using this mode.
 	static bool samplingMode = false;
 	static private int sampleNumber = 20;
 	static private int totalTrials = 100000;
@@ -337,6 +338,7 @@ public class scatterCluster : MonoBehaviour {
 			sw.Close();
 		}
 
+	//Wanna use other experiment conditions? change the count here and follow it with staircase objects of your choosing.
 		staircaseCount = 26;
 		staircases = new Staircase[staircaseCount];
 
