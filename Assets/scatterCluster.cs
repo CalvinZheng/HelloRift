@@ -3,7 +3,7 @@ using UnityEngine.UI;
 using System.Collections;
 using System.IO;
 
-public class StairCase
+public class Staircase
 {
 	public bool stereo;
 	public bool montion;
@@ -33,15 +33,15 @@ public class StairCase
 	private bool lastFeedback;
 
 	static bool samplingMode = false;
-	static private int sampleNumber = 10;
-	static private int totalTrials = 1000;
+	static private int sampleNumber = 20;
+	static private int totalTrials = 100000;
 	static private float initDistance = 0.2f;
 	private int currentLevel;
 	private int[] rightCount;
 	private int[] wrongCount;
 	private int[] disagreeCount;
 
-	public StairCase(bool stereo, bool montion, bool density, bool hollow, bool uneven, bool widen, bool strip)
+	public Staircase(bool stereo, bool montion, bool density, bool hollow, bool uneven, bool widen, bool strip)
 	{
 		this.stereo = stereo;
 		this.montion = montion;
@@ -293,8 +293,8 @@ public class scatterCluster : MonoBehaviour {
 	private Transform redCube1, redCube2;
 	private bool stereo, montion, density, tunneling, size, transparent, PLC;
 	private string filename;
-	private StairCase[] staircases;
-	private StairCase currentStaircase;
+	private Staircase[] staircases;
+	private Staircase currentStaircase;
 	private int staircaseCount;
 	private int blockCaseCount;
 	private System.DateTime clusterTimestamp;
@@ -315,8 +315,8 @@ public class scatterCluster : MonoBehaviour {
 	private Vector3 redCube2Scale;
 	private float[] clusterScales;
 
-	// Use this for initialization
-	void Start ()
+    // Use this for initialization
+    void Start ()
 	{
 		Random.seed = (int)System.DateTime.Now.Ticks;
 
@@ -338,35 +338,35 @@ public class scatterCluster : MonoBehaviour {
 		}
 
 		staircaseCount = 26;
-		staircases = new StairCase[staircaseCount];
+		staircases = new Staircase[staircaseCount];
 
-//		*EXAMPLE* new StairCase(istereo, imontion, dense, hollow, uneven, widen, strip);
+        //*EXAMPLE* new StairCase(istereo, imontion, dense, hollow, uneven, widen, strip);
 
-		staircases [0] = new StairCase(true, true, false, false, false, true, false);
-		staircases [0].size = false;
+        staircases[0] = new Staircase(true, true, false, false, false, true, false);
+        staircases[0].size = false;
 
-		for (int i = 0; i < 14; i++)
-		{
-			bool hollow = i%4 == 1 || i%4 == 2;
-			bool uneven = i%4 == 1 || i%4 == 3;
-			bool isize = false;
-			bool istereo = i/4 == 0 || i/4 == 2;
-			bool imotion = i/4 == 1 || i/4 == 2;
-			staircases [i+1] = new StairCase(istereo, imotion, true, hollow, uneven, true, false);
-			staircases [i+1].size = isize;
-		}
+        for (int i = 0; i < 14; i++)
+        {
+            bool hollow = i % 4 == 1 || i % 4 == 2;
+            bool uneven = i % 4 == 1 || i % 4 == 3;
+            bool isize = false;
+            bool istereo = i / 4 == 0 || i / 4 == 2;
+            bool imotion = i / 4 == 1 || i / 4 == 2;
+            staircases[i + 1] = new Staircase(istereo, imotion, true, hollow, uneven, true, false);
+            staircases[i + 1].size = isize;
+        }
 
-		for (int i = 0; i < 11; i++)
-		{
-			bool hollow = i%3 == 1;
-			bool uneven = i%3 == 1 || i%3 == 2;
-			bool istereo = i/3 == 0 || i/3 == 2;
-			bool imotion = i/3 == 1 || i/3 == 2;
-			staircases [i+15] = new StairCase(istereo, imotion, true, hollow, uneven, false, true);
-			staircases [i+15].size = false;
-		}
-		
-		stereo = true;
+        for (int i = 0; i < 11; i++)
+        {
+            bool hollow = i % 3 == 1;
+            bool uneven = i % 3 == 1 || i % 3 == 2;
+            bool istereo = i / 3 == 0 || i / 3 == 2;
+            bool imotion = i / 3 == 1 || i / 3 == 2;
+            staircases[i + 15] = new Staircase(istereo, imotion, true, hollow, uneven, false, true);
+            staircases[i + 15].size = false;
+        }
+
+        stereo = true;
 		montion = true;
 		density = true;
 		tunneling = true;
@@ -604,11 +604,13 @@ public class scatterCluster : MonoBehaviour {
 						if (rightFirst == (Random.value < usingUnevenRate))
 						{
 							z = Random.value*(maxHeight - backLine)+backLine;
+                            //cluster[i].gameObject.SetActive(false);
 						}
 						else
 						{
 							z = Random.value*frontLine;
-						}
+                           //cluster[i].gameObject.SetActive(false);
+                        }
 					}
 					else
 					{
@@ -617,11 +619,13 @@ public class scatterCluster : MonoBehaviour {
 						if (!rightFirst == (Random.value < usingUnevenRate))
 						{
 							z = Random.value*(maxHeight - backLine)+backLine;
-						}
+                            //cluster[i].gameObject.SetActive(false);
+                        }
 						else
 						{
 							z = Random.value*frontLine;
-						}
+                            //cluster[i].gameObject.SetActive(false);
+                        }
 					}
 					cluster[i].position = new Vector3(x,y,z);
 				}
@@ -721,9 +725,10 @@ public class scatterCluster : MonoBehaviour {
 		int hitCount = 0;
 		int totalCount = 0;
 		float minX = 999, maxX = -999, minY = 999, maxY = -999;
-		for (float xStep = -end.localScale.x/2+0.001f; xStep < end.localScale.x/2-0.001f; xStep += 0.001f)
+        float accurancy = 0.0005f;
+		for (float xStep = -end.localScale.x/2+ accurancy; xStep < end.localScale.x/2- accurancy; xStep += accurancy)
 		{
-			for (float yStep = -end.localScale.y/2+0.001f; yStep < end.localScale.y/2-0.001f; yStep += 0.001f)
+			for (float yStep = -end.localScale.y/2+ accurancy; yStep < end.localScale.y/2- accurancy; yStep += accurancy)
 			{
 				Physics.Raycast(start.position, end.position-start.position + new Vector3(xStep, yStep, 0), out hit);
 				if (hit.collider != shield1.gameObject.GetComponent<Collider> ()
@@ -876,7 +881,7 @@ public class scatterCluster : MonoBehaviour {
 		}
 		else if (restPeriod)
 		{
-			if (Input.GetKeyDown ("space"))
+			if (Input.GetKeyDown ("space") || pseudoObserver)
 			{
 				restPeriod = false;
 				maskCube.gameObject.SetActive(false);
@@ -902,6 +907,9 @@ public class scatterCluster : MonoBehaviour {
 				distanceDisplay.GetComponent<TextMesh> ().text = string.Format("{0}vs.{1}", leftVisibility/2, rightVisibility/2);
 
 				observedResult = (leftVisibility > rightVisibility);
+
+                if (leftVisibility == rightVisibility)
+                    observedResult = (Random.value > 0.5 ? true : false);
 
 				observed = true;
 			}
@@ -1066,7 +1074,7 @@ public class scatterCluster : MonoBehaviour {
 		{
 			//distanceDisplay.GetComponent<TextMesh> ().text = string.Format("{0}", currentStaircase.currentDistance());
 			float progress = 0;
-			foreach (StairCase aStaircase in staircases)
+			foreach (Staircase aStaircase in staircases)
 			{
 				progress += aStaircase.completeRate();
 			}
