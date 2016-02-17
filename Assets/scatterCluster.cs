@@ -31,6 +31,7 @@ public class Staircase
 	static int finalResultCount = 10;
 
 	private bool lastFeedback;
+    public bool simulateAcurity;
 
 	//If you want the experiments to run at specified distances for multiple time, instead of staircase method, set samplingMode to true. We usually run idealObserver using this mode.
 	static bool samplingMode = false;
@@ -62,6 +63,7 @@ public class Staircase
 		}
 		this.size = false;
 		this.randomSize = false;
+        this.simulateAcurity = false;
 
 		results = new float[500];
 		for (int i = 0; i < 500; i++)
@@ -197,7 +199,7 @@ public class Staircase
 
 	public string conditionLabel()
 	{
-		return "("+(strip?"bar+":"")+(stereo?"stereo+":"")+(montion?"motion+":"")+(!density?"base+":"")+(size?"size+":"")+(randomSize?"Rsize+":"")+(uneven?"50/50+":"")+(hollow?"hollow+":"")+")";
+		return "("+(strip?"bar+":"")+(stereo?"stereo+":"")+(montion?"motion+":"")+(!density?"base+":"")+(size?"size+":"")+(randomSize?"Rsize+":"")+(uneven?"50/50+":"")+(hollow?"hollow+":"")+ (simulateAcurity ? "sim+" : "")+")";
 	}
 
 	public void outputResult()
@@ -338,7 +340,7 @@ public class scatterCluster : MonoBehaviour {
 			sw.Close();
 		}
 
-	//Wanna use other experiment conditions? change the count here and follow it with staircase objects of your choosing.
+	    //Wanna use other experiment conditions? change the count here and follow it with staircase objects of your choosing.
 		staircaseCount = 26;
 		staircases = new Staircase[staircaseCount];
 
@@ -581,7 +583,9 @@ public class scatterCluster : MonoBehaviour {
 			}
 		}
 
-		for (int i = 0; i < realFragCount; i++)
+        float longestFragmentExtend = 0;// fragment.localScale.x * Mathf.Sqrt(2) / 2 + 0.0001f;
+
+        for (int i = 0; i < realFragCount; i++)
 		{
 			cluster[i] = Instantiate(fragment) as Transform;
 			cluster[i].gameObject.SetActive(true);
@@ -601,8 +605,8 @@ public class scatterCluster : MonoBehaviour {
 
 					if (leftOrUpSide)
 					{
-						float frontLine = (currentStaircase.hollow ? Mathf.Min(redCube1.position.z, redCube2.position.z) : redCube1.position.z);
-						float backLine = (currentStaircase.hollow ? Mathf.Max(redCube1.position.z, redCube2.position.z) : redCube1.position.z);
+						float frontLine = (currentStaircase.hollow ? Mathf.Min(redCube1.position.z, redCube2.position.z) - longestFragmentExtend : redCube1.position.z);
+						float backLine = (currentStaircase.hollow ? Mathf.Max(redCube1.position.z, redCube2.position.z) + longestFragmentExtend : redCube1.position.z);
 						if (rightFirst == (Random.value < usingUnevenRate))
 						{
 							z = Random.value*(maxHeight - backLine)+backLine;
@@ -616,8 +620,8 @@ public class scatterCluster : MonoBehaviour {
 					}
 					else
 					{
-						float frontLine = (currentStaircase.hollow ? Mathf.Min(redCube1.position.z, redCube2.position.z) : redCube2.position.z);
-						float backLine = (currentStaircase.hollow ? Mathf.Max(redCube1.position.z, redCube2.position.z) : redCube2.position.z);
+						float frontLine = (currentStaircase.hollow ? Mathf.Min(redCube1.position.z, redCube2.position.z) - longestFragmentExtend : redCube2.position.z);
+						float backLine = (currentStaircase.hollow ? Mathf.Max(redCube1.position.z, redCube2.position.z) + longestFragmentExtend : redCube2.position.z);
 						if (!rightFirst == (Random.value < usingUnevenRate))
 						{
 							z = Random.value*(maxHeight - backLine)+backLine;
@@ -635,43 +639,51 @@ public class scatterCluster : MonoBehaviour {
 				{
 					if (Random.value > 0.5f)
 					{
-						cluster[i].position = new Vector3(Random.value*maxHeight-maxHeight/2, Random.value*maxHeight, Random.value*Mathf.Min (redCube1.position.z, redCube2.position.z));
+						cluster[i].position = new Vector3(Random.value*maxHeight-maxHeight/2, Random.value*maxHeight,
+                                                          Random.value*(Mathf.Min (redCube1.position.z, redCube2.position.z) - longestFragmentExtend));
 					}
 					else
 					{
 						cluster[i].position = new Vector3(Random.value*maxHeight-maxHeight/2, Random.value*maxHeight, 
-						                                  Random.Range(Mathf.Max (redCube1.position.z, redCube2.position.z), maxHeight));
+						                                  Random.Range(Mathf.Max (redCube1.position.z, redCube2.position.z) + longestFragmentExtend, maxHeight));
 					}
 				}
 				else
 				{
 					cluster[i].position = new Vector3(Random.value*maxHeight-maxHeight/2, Random.value*maxHeight, Random.value*maxHeight);
 				}
+                
+                cluster[i].rotation = Random.rotation;
+                clusterScales[i] = Random.Range(0.8f, 1.2f);
+                cluster[i].localScale *= clusterScales[i];
 
-				Bounds clusterBounds = cluster[i].GetComponent<Collider>().bounds;
-				clusterBounds.extents = new Vector3(1,1,1)*fragment.localScale.x*Mathf.Sqrt(2)/2;
+                Bounds clusterBounds = cluster[i].GetComponent<Collider>().bounds;
 
 				if (redCube1.GetComponent<Collider>().bounds.Intersects(clusterBounds))
 				{
-					if (cluster[i].position.z > redCube1.position.z)
-					{
-						cluster[i].position += new Vector3(0, 0, fragment.localScale.x*Mathf.Sqrt(2)/2);
-					}
-					else
-					{
-						cluster[i].position -= new Vector3(0, 0, fragment.localScale.x*Mathf.Sqrt(2)/2);
-					}
+                    continue;
+                    //Debug.Log(currentDistance);
+					//if (cluster[i].position.z > redCube1.position.z)
+					//{
+					//	cluster[i].position += new Vector3(0, 0, fragment.localScale.x*Mathf.Sqrt(2)/2);
+					//}
+					//else
+					//{
+					//	cluster[i].position -= new Vector3(0, 0, fragment.localScale.x*Mathf.Sqrt(2)/2);
+					//}
 				}
 				if (redCube2.GetComponent<Collider>().bounds.Intersects(clusterBounds))
-				{
-					if (cluster[i].position.z > redCube2.position.z)
-					{
-						cluster[i].position += new Vector3(0, 0, fragment.localScale.x*Mathf.Sqrt(2)/2);
-					}
-					else
-					{
-						cluster[i].position -= new Vector3(0, 0, fragment.localScale.x*Mathf.Sqrt(2)/2);
-					}
+                {
+                    continue;
+                    //Debug.Log(currentDistance);
+                    //if (cluster[i].position.z > redCube2.position.z)
+					//{
+					//	cluster[i].position += new Vector3(0, 0, fragment.localScale.x*Mathf.Sqrt(2)/2);
+					//}
+					//else
+					//{
+					//	cluster[i].position -= new Vector3(0, 0, fragment.localScale.x*Mathf.Sqrt(2)/2);
+					//}
 				}
 
 				if (!tunneling)
@@ -686,9 +698,6 @@ public class scatterCluster : MonoBehaviour {
 				    && (fragV.magnitude > cube2V.magnitude+tunnelWidth || dist2 > tunnelWidth))
 					break;
 			}
-			cluster[i].rotation = Random.rotation;
-			clusterScales[i] = Random.Range(0.8f, 1.2f);
-			cluster[i].localScale *= clusterScales[i];
 			if (PLC || transparent)
 			{
 				float greyScale = PLC ? 1-cluster[i].position.z/maxHeight : 1;
@@ -721,7 +730,30 @@ public class scatterCluster : MonoBehaviour {
 			return false;
 	}
 
-	float testVisibility(Transform start, Transform end)
+    float testContextDistance(Transform start, Transform end)
+    {
+        RaycastHit hit;
+        float maxZ = -999;
+        float accurancy = 0.0005f;
+        for (float xStep = -end.localScale.x / 2 + accurancy; xStep < end.localScale.x / 2 - accurancy; xStep += accurancy)
+        {
+            for (float yStep = -end.localScale.y / 2 + accurancy; yStep < end.localScale.y / 2 - accurancy; yStep += accurancy)
+            {
+                Physics.Raycast(start.position, end.position - start.position + new Vector3(xStep, yStep, 0), out hit);
+                if (hit.collider != shield1.gameObject.GetComponent<Collider>()
+                    && hit.collider != shield2.gameObject.GetComponent<Collider>()
+                    && hit.collider != end.gameObject.GetComponent<Collider>())
+                {
+                    if (hit.point.z > maxZ)
+                        maxZ = hit.point.z;
+                }
+
+            }
+        }
+        return maxZ;
+    }
+
+    float testVisibility(Transform start, Transform end)
 	{
 		RaycastHit hit;
 		int hitCount = 0;
@@ -753,14 +785,17 @@ public class scatterCluster : MonoBehaviour {
 				}
 			}
 		}
+        // result is the ratio of target that is visible
 		float result = (float)hitCount / totalCount;
 		if (currentStaircase.size)
 		{
+            // if size cue presents then result is estimated number of pixels visible
 			result *= Mathf.Pow(12*Mathf.Sqrt(3)/(1.2f+end.position.z*2),2);
 		}
 
 		if (currentStaircase.size && (currentStaircase.uneven || currentStaircase.hollow) && !(currentStaircase.uneven && currentStaircase.hollow))
 		{
+            // if size cue presents but no visiblility cues, then result is max distance of visbile points, in visiual angle
 			result = Mathf.Max (maxX - minX, maxY - minY);
 			result /= end.position.z - start.position.z;
 		}
@@ -894,26 +929,58 @@ public class scatterCluster : MonoBehaviour {
 		{
 			if (!observed && (System.DateTime.Now - clusterTimestamp).TotalSeconds > 0.01)
 			{
-				float left1 = testVisibility(stereo?leftEye:monoEye, redCube1);
-				float left2 = testVisibility(stereo?leftEye:monoEye, redCube2);
-				float right1 = testVisibility(stereo?rightEye:monoEye, redCube1);
-				float right2 = testVisibility(stereo?rightEye:monoEye, redCube2);
-				float leftVisibility = left1 + right1;
-				float rightVisibility = left2 + right2;
+                if ((!currentStaircase.hollow && currentStaircase.uneven) || (currentStaircase.hollow && !currentStaircase.uneven))
+                {
+                    // no visibility cue, now use context cue
 
-				if ((left1 >= left2) != (right1 >= right2))
-				{
-					currentStaircase.feedbackDisagree();
-				}
+                    float left1 = testContextDistance(stereo ? leftEye : monoEye, redCube1);
+                    float left2 = testContextDistance(stereo ? leftEye : monoEye, redCube2);
+                    float right1 = testContextDistance(stereo ? rightEye : monoEye, redCube1);
+                    float right2 = testContextDistance(stereo ? rightEye : monoEye, redCube2);
+                    float estimate1 = left1 + right1;
+                    float estimate2 = left2 + right2;
 
-				distanceDisplay.GetComponent<TextMesh> ().text = string.Format("{0}vs.{1}", leftVisibility/2, rightVisibility/2);
+                    if ((left1 >= left2) != (right1 >= right2))
+                    {
+                        currentStaircase.feedbackDisagree();
+                    }
+                    //Debug.Log(Mathf.Abs(estimate1 - estimate2));
 
-				observedResult = (leftVisibility > rightVisibility);
+                    if (Mathf.Abs(estimate1 - estimate2) <= 0.01 && currentStaircase.simulateAcurity)
+                    {
+                        //count++;
+                        //Debug.Log(currentStaircase.currentDistance());
+                        //Debug.Log(count);
+                        // if the distance is less than 1cm, then human eye can not distinguish
+                        observedResult = (Random.value > 0.5 ? true : false);
+                    }
+                    else
+                    {
+                        observedResult = (estimate1 < estimate2);
+                    }
+                }
+                else
+                {
+                    float left1 = testVisibility(stereo ? leftEye : monoEye, redCube1);
+                    float left2 = testVisibility(stereo ? leftEye : monoEye, redCube2);
+                    float right1 = testVisibility(stereo ? rightEye : monoEye, redCube1);
+                    float right2 = testVisibility(stereo ? rightEye : monoEye, redCube2);
+                    float leftVisibility = left1 + right1;
+                    float rightVisibility = left2 + right2;
 
-                if (leftVisibility == rightVisibility)
-                    observedResult = (Random.value > 0.5 ? true : false);
+                    if ((left1 >= left2) != (right1 >= right2))
+                    {
+                        currentStaircase.feedbackDisagree();
+                    }
 
-				observed = true;
+                    distanceDisplay.GetComponent<TextMesh>().text = string.Format("{0}vs.{1}", leftVisibility / 2, rightVisibility / 2);
+
+                    observedResult = (leftVisibility > rightVisibility);
+
+                    if (leftVisibility == rightVisibility)
+                        observedResult = (Random.value > 0.5 ? true : false);
+                }
+                observed = true;
 			}
 
 			if ((System.DateTime.Now - clusterTimestamp).TotalSeconds > 0.01)
