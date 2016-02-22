@@ -34,16 +34,23 @@ public class Staircase
     public bool simulateAcurity;
 
 	//If you want the experiments to run at specified distances for multiple time, instead of staircase method, set samplingMode to true. We usually run idealObserver using this mode.
-	static bool samplingMode = false;
-	static private int sampleNumber = 20;
-	static private int totalTrials = 100000;
+	static bool samplingMode = true;
+    static bool samplingExponentially = true;
+    private const int sampleNumber = 20;
+	private const int totalTrials = 100000;
 	static private float initDistance = 0.2f;
 	private int currentLevel;
 	private int[] rightCount;
 	private int[] wrongCount;
 	private int[] disagreeCount;
 
-	public Staircase(bool stereo, bool montion, bool density, bool hollow, bool uneven, bool widen, bool strip)
+    // recordMode records the raw output of ideal observer, without comparing two targets
+    static bool recordMode = false;
+    private int[] noOfRecords;
+    private float[][] nearRecords;
+    private float[][] farRecords;
+
+    public Staircase(bool stereo, bool montion, bool density, bool hollow, bool uneven, bool widen, bool strip)
 	{
 		this.stereo = stereo;
 		this.montion = montion;
@@ -79,21 +86,32 @@ public class Staircase
 		rightCount = new int[sampleNumber];
 		wrongCount = new int[sampleNumber];
 		disagreeCount = new int[sampleNumber];
-		for (int i = 0; i < sampleNumber; i++)
+        noOfRecords = new int[sampleNumber];
+        nearRecords = new float[sampleNumber][];
+        farRecords = new float[sampleNumber][];
+        for (int i = 0; i < sampleNumber; i++)
 		{
 			wrongCount[i] = 0;
 			rightCount[i] = 0;
 			disagreeCount[i] = 0;
+            noOfRecords[i] = 0;
+            nearRecords[i] = new float[totalTrials/(sampleNumber-1)];
+            farRecords[i] = new float[totalTrials / (sampleNumber - 1)];
 		}
 	}
 
 	public float currentDistance()
 	{
 		if (samplingMode)
-			return initDistance * Mathf.Pow (stepDownRatio, currentLevel);
+			return distanceFromRatioLevel(stepDownRatio, currentLevel);
 		else
 			return results [currentStep];
 	}
+
+    float distanceFromRatioLevel(float ratio, float level)
+    {
+        return samplingExponentially ? initDistance * Mathf.Pow(ratio, level) : initDistance / sampleNumber * (sampleNumber-level);
+    }
 
 	public bool finished()
 	{
@@ -197,6 +215,15 @@ public class Staircase
 		disagreeCount [currentLevel]++;
 	}
 
+    public void recordNearFar(float near, float far)
+    {
+        if (noOfRecords[currentLevel] >= nearRecords[currentLevel].Length)
+            return;
+        nearRecords[currentLevel][noOfRecords[currentLevel]] = near;
+        farRecords[currentLevel][noOfRecords[currentLevel]] = far;
+        noOfRecords[currentLevel]++;
+    }
+
 	public string conditionLabel()
 	{
 		return "("+(strip?"bar+":"")+(stereo?"stereo+":"")+(montion?"motion+":"")+(!density?"base+":"")+(size?"size+":"")+(randomSize?"Rsize+":"")+(uneven?"50/50+":"")+(hollow?"hollow+":"")+ (simulateAcurity ? "sim+" : "")+")";
@@ -234,10 +261,50 @@ public class Staircase
 			sw.WriteLine(label+",{0}", finalResult);
 			if (samplingMode)
 			{
-				for (int i = 0; i < sampleNumber; i++)
-				{
-					sw.WriteLine("{0},{1},{2}", initDistance * Mathf.Pow (stepDownRatio, i), (float)rightCount[i]/(wrongCount[i]+rightCount[i]), (float)disagreeCount[i]/(wrongCount[i]+rightCount[i]));
-				}
+                if (recordMode)
+                {
+                    for (int i = 0; i < sampleNumber; i++)
+                    {
+                        float sum = 0;
+                        for (int j = 0; j < noOfRecords[i]; j++)
+                        {
+                            sum += nearRecords[i][j];
+                        }
+                        float mean = sum / noOfRecords[i];
+                        float variance = 0;
+                        for (int j = 0; j < noOfRecords[i]; j++)
+                        {
+                            variance += (mean - nearRecords[i][j])* (mean - nearRecords[i][j]);
+                        }
+                        float std = Mathf.Sqrt(variance / (noOfRecords[i] - 1));
+                        float error = std / Mathf.Sqrt(noOfRecords[i]);
+                        sw.WriteLine("{0},{1},{2},{3}", 0.1f - distanceFromRatioLevel(stepDownRatio, i) / 2, mean, std, error);
+                    }
+                    for (int i = sampleNumber - 1; i >= 0; i--)
+                    {
+                        float sum = 0;
+                        for (int j = 0; j < noOfRecords[i]; j++)
+                        {
+                            sum += farRecords[i][j];
+                        }
+                        float mean = sum / noOfRecords[i];
+                        float variance = 0;
+                        for (int j = 0; j < noOfRecords[i]; j++)
+                        {
+                            variance += (mean - farRecords[i][j]) * (mean - farRecords[i][j]);
+                        }
+                        float std = Mathf.Sqrt(variance / (noOfRecords[i] - 1));
+                        float error = std / Mathf.Sqrt(noOfRecords[i]);
+                        sw.WriteLine("{0},{1},{2}, {3}", 0.1f + distanceFromRatioLevel(stepDownRatio, i) / 2, mean, std, error);
+                    }
+                }
+                else
+                {
+                    for (int i = 0; i < sampleNumber; i++)
+                    {
+                        sw.WriteLine("{0},{1},{2}", distanceFromRatioLevel(stepDownRatio, i), (float)rightCount[i] / (wrongCount[i] + rightCount[i]), (float)disagreeCount[i] / (wrongCount[i] + rightCount[i]));
+                    }
+                }
 			}
 			sw.Close();
 
@@ -341,34 +408,45 @@ public class scatterCluster : MonoBehaviour {
 		}
 
 	    //Wanna use other experiment conditions? change the count here and follow it with staircase objects of your choosing.
-		staircaseCount = 26;
+		staircaseCount = 32;
 		staircases = new Staircase[staircaseCount];
 
         //*EXAMPLE* new StairCase(istereo, imontion, dense, hollow, uneven, widen, strip);
 
-        staircases[0] = new Staircase(true, true, false, false, false, true, false);
-        staircases[0].size = false;
-
-        for (int i = 0; i < 14; i++)
+        for (int i = 0; i < 32; i++)
         {
             bool hollow = i % 4 == 1 || i % 4 == 2;
             bool uneven = i % 4 == 1 || i % 4 == 3;
-            bool isize = false;
-            bool istereo = i / 4 == 0 || i / 4 == 2;
-            bool imotion = i / 4 == 1 || i / 4 == 2;
-            staircases[i + 1] = new Staircase(istereo, imotion, true, hollow, uneven, true, false);
-            staircases[i + 1].size = isize;
+            bool istereo = i / 4 == 0 || i / 4 == 2 || i / 4 == 4 || i / 4 == 6;
+            bool imotion = i / 4 == 1 || i / 4 == 2 || i / 4 == 5 || i / 4 == 6;
+            bool strip = i < 16;
+            staircases[i] = new Staircase(istereo, imotion, true, hollow, uneven, !strip, strip);
+            staircases[i].size = false;
         }
 
-        for (int i = 0; i < 11; i++)
-        {
-            bool hollow = i % 3 == 1;
-            bool uneven = i % 3 == 1 || i % 3 == 2;
-            bool istereo = i / 3 == 0 || i / 3 == 2;
-            bool imotion = i / 3 == 1 || i / 3 == 2;
-            staircases[i + 15] = new Staircase(istereo, imotion, true, hollow, uneven, false, true);
-            staircases[i + 15].size = false;
-        }
+        //staircases[0] = new Staircase(true, true, false, false, false, true, false);
+        //staircases[0].size = false;
+
+        //for (int i = 0; i < 14; i++)
+        //{
+        //    bool hollow = i % 4 == 1 || i % 4 == 2;
+        //    bool uneven = i % 4 == 1 || i % 4 == 3;
+        //    bool isize = false;
+        //    bool istereo = i / 4 == 0 || i / 4 == 2;
+        //    bool imotion = i / 4 == 1 || i / 4 == 2;
+        //    staircases[i + 1] = new Staircase(istereo, imotion, true, hollow, uneven, true, false);
+        //    staircases[i + 1].size = isize;
+        //}
+
+        //for (int i = 0; i < 11; i++)
+        //{
+        //    bool hollow = i % 3 == 1;
+        //    bool uneven = i % 3 == 1 || i % 3 == 2;
+        //    bool istereo = i / 3 == 0 || i / 3 == 2;
+        //    bool imotion = i / 3 == 1 || i / 3 == 2;
+        //    staircases[i + 15] = new Staircase(istereo, imotion, true, hollow, uneven, false, true);
+        //    staircases[i + 15].size = false;
+        //}
 
         stereo = true;
 		montion = true;
@@ -747,8 +825,11 @@ public class scatterCluster : MonoBehaviour {
                     if (hit.point.z > maxZ)
                         maxZ = hit.point.z;
                 }
-
             }
+        }
+        if (maxZ == -999)
+        {
+            maxZ = 0;
         }
         return maxZ;
     }
@@ -929,7 +1010,9 @@ public class scatterCluster : MonoBehaviour {
 		{
 			if (!observed && (System.DateTime.Now - clusterTimestamp).TotalSeconds > 0.01)
 			{
-                if ((!currentStaircase.hollow && currentStaircase.uneven) || (currentStaircase.hollow && !currentStaircase.uneven))
+                // temparal code, motion means use visibility observer, otherwise use context observer
+                if (!currentStaircase.montion)
+                //if ((!currentStaircase.hollow && currentStaircase.uneven) || (currentStaircase.hollow && !currentStaircase.uneven))
                 {
                     // no visibility cue, now use context cue
 
@@ -944,13 +1027,9 @@ public class scatterCluster : MonoBehaviour {
                     {
                         currentStaircase.feedbackDisagree();
                     }
-                    //Debug.Log(Mathf.Abs(estimate1 - estimate2));
 
                     if (Mathf.Abs(estimate1 - estimate2) <= 0.01 && currentStaircase.simulateAcurity)
                     {
-                        //count++;
-                        //Debug.Log(currentStaircase.currentDistance());
-                        //Debug.Log(count);
                         // if the distance is less than 1cm, then human eye can not distinguish
                         observedResult = (Random.value > 0.5 ? true : false);
                     }
@@ -958,9 +1037,15 @@ public class scatterCluster : MonoBehaviour {
                     {
                         observedResult = (estimate1 < estimate2);
                     }
+
+                    // recordMode
+                    Transform nearCube = redCube1.position.z > redCube2.position.z ? redCube2 : redCube1;
+                    Transform farCube = redCube1 == nearCube ? redCube2 : redCube1;
+                    currentStaircase.recordNearFar(testContextDistance(monoEye, nearCube), testContextDistance(monoEye, farCube));
                 }
                 else
                 {
+
                     float left1 = testVisibility(stereo ? leftEye : monoEye, redCube1);
                     float left2 = testVisibility(stereo ? leftEye : monoEye, redCube2);
                     float right1 = testVisibility(stereo ? rightEye : monoEye, redCube1);
@@ -979,6 +1064,11 @@ public class scatterCluster : MonoBehaviour {
 
                     if (leftVisibility == rightVisibility)
                         observedResult = (Random.value > 0.5 ? true : false);
+
+                    // recordMode
+                    Transform nearCube = redCube1.position.z > redCube2.position.z ? redCube2 : redCube1;
+                    Transform farCube = redCube1 == nearCube ? redCube2 : redCube1;
+                    currentStaircase.recordNearFar(testVisibility(monoEye, nearCube), testVisibility(monoEye, farCube));
                 }
                 observed = true;
 			}
