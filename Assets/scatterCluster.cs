@@ -374,9 +374,9 @@ public class scatterCluster : MonoBehaviour {
 	private bool restPeriod;
 	private bool movementWarning;
 	private bool completed;
-	private byte[] positionData;
-	private int positionDataCount;
-	private System.DateTime startTime;
+	//private byte[] positionData;
+	//private int positionDataCount;
+	//private System.DateTime startTime;
 	private float leftMostX;
 	private float rightMostX;
 	private bool observed;
@@ -474,9 +474,9 @@ public class scatterCluster : MonoBehaviour {
 		}
 		currentStaircase = staircases [Random.Range (0, staircaseCount)];
 
-		positionData = new byte[60 * 60 * 60 * 4 * 4];
-		positionDataCount = 0;
-		startTime = System.DateTime.Now;
+		//positionData = new byte[60 * 60 * 60 * 4 * 4];
+		//positionDataCount = 0;
+		//startTime = System.DateTime.Now;
 
 		resetCluster ();
 	}
@@ -507,7 +507,9 @@ public class scatterCluster : MonoBehaviour {
 
 	void resetCluster()
 	{
-		float currentDistance;
+        System.GC.Collect();
+
+        float currentDistance;
 		if (continousMode)
 		{
 			currentDistance = 0.8f;
@@ -518,9 +520,9 @@ public class scatterCluster : MonoBehaviour {
 			if (!checkIfAnyAvailable())
 			{
 				completed = true;
-				byte[] dataToWrite = new byte[positionDataCount];
-				System.Array.Copy(positionData, 0, dataToWrite, 0, positionDataCount);
-				File.WriteAllBytes("output/tracking-"+filename, dataToWrite);
+				//byte[] dataToWrite = new byte[positionDataCount];
+				//System.Array.Copy(positionData, 0, dataToWrite, 0, positionDataCount);
+				//File.WriteAllBytes("output/tracking-"+filename, dataToWrite);
 				return;
 			}
 
@@ -661,15 +663,19 @@ public class scatterCluster : MonoBehaviour {
 			}
 		}
 
-        float longestFragmentExtend = 0;// fragment.localScale.x * Mathf.Sqrt(2) / 2 + 0.0001f;
-
         for (int i = 0; i < realFragCount; i++)
 		{
 			cluster[i] = Instantiate(fragment) as Transform;
 			cluster[i].gameObject.SetActive(true);
 			while(true)
-			{
-				if (currentStaircase.uneven)
+            {
+                cluster[i].rotation = Random.rotation;
+                clusterScales[i] = Random.Range(0.8f, 1.2f);
+                cluster[i].localScale *= clusterScales[i];
+                
+                float longestFragmentExtend = cluster[i].localScale.x * Mathf.Sqrt(2) / 2;
+
+                if (currentStaircase.uneven)
 				{
 					float x = Random.value*maxHeight-maxHeight/2;
 					float y = Random.value*maxHeight;
@@ -681,11 +687,13 @@ public class scatterCluster : MonoBehaviour {
 					}
 					bool leftOrUpSide = (currentStaircase.strip ? (y > maxHeight/2) : (x < 0));
 
-					if (leftOrUpSide)
+                    if (leftOrUpSide)
 					{
-						float frontLine = (currentStaircase.hollow ? Mathf.Min(redCube1.position.z, redCube2.position.z) - longestFragmentExtend : redCube1.position.z);
-						float backLine = (currentStaircase.hollow ? Mathf.Max(redCube1.position.z, redCube2.position.z) + longestFragmentExtend : redCube1.position.z);
-						if (rightFirst == (Random.value < usingUnevenRate))
+						float frontLine = (currentStaircase.hollow ? Mathf.Min(redCube1.position.z, redCube2.position.z) : redCube1.position.z);
+						float backLine = (currentStaircase.hollow ? Mathf.Max(redCube1.position.z, redCube2.position.z) : redCube1.position.z);
+                        frontLine -= longestFragmentExtend;
+                        backLine += longestFragmentExtend;
+                        if (rightFirst == (Random.value < usingUnevenRate))
 						{
 							z = Random.value*(maxHeight - backLine)+backLine;
                             //cluster[i].gameObject.SetActive(false);
@@ -698,9 +706,11 @@ public class scatterCluster : MonoBehaviour {
 					}
 					else
 					{
-						float frontLine = (currentStaircase.hollow ? Mathf.Min(redCube1.position.z, redCube2.position.z) - longestFragmentExtend : redCube2.position.z);
-						float backLine = (currentStaircase.hollow ? Mathf.Max(redCube1.position.z, redCube2.position.z) + longestFragmentExtend : redCube2.position.z);
-						if (!rightFirst == (Random.value < usingUnevenRate))
+						float frontLine = (currentStaircase.hollow ? Mathf.Min(redCube1.position.z, redCube2.position.z) : redCube2.position.z);
+						float backLine = (currentStaircase.hollow ? Mathf.Max(redCube1.position.z, redCube2.position.z) : redCube2.position.z);
+                        frontLine -= longestFragmentExtend;
+                        backLine += longestFragmentExtend;
+                        if (!rightFirst == (Random.value < usingUnevenRate))
 						{
 							z = Random.value*(maxHeight - backLine)+backLine;
                             //cluster[i].gameObject.SetActive(false);
@@ -730,17 +740,13 @@ public class scatterCluster : MonoBehaviour {
 				{
 					cluster[i].position = new Vector3(Random.value*maxHeight-maxHeight/2, Random.value*maxHeight, Random.value*maxHeight);
 				}
-                
-                cluster[i].rotation = Random.rotation;
-                clusterScales[i] = Random.Range(0.8f, 1.2f);
-                cluster[i].localScale *= clusterScales[i];
 
                 Bounds clusterBounds = cluster[i].GetComponent<Collider>().bounds;
 
 				if (redCube1.GetComponent<Collider>().bounds.Intersects(clusterBounds))
-				{
-                    continue;
-                    //Debug.Log(currentDistance);
+                {
+                    //continue;
+                    //Debug.Log("intersect!");
 					//if (cluster[i].position.z > redCube1.position.z)
 					//{
 					//	cluster[i].position += new Vector3(0, 0, fragment.localScale.x*Mathf.Sqrt(2)/2);
@@ -752,17 +758,17 @@ public class scatterCluster : MonoBehaviour {
 				}
 				if (redCube2.GetComponent<Collider>().bounds.Intersects(clusterBounds))
                 {
-                    continue;
-                    //Debug.Log(currentDistance);
+                    //continue;
+                    //Debug.Log("intersect!");
                     //if (cluster[i].position.z > redCube2.position.z)
-					//{
-					//	cluster[i].position += new Vector3(0, 0, fragment.localScale.x*Mathf.Sqrt(2)/2);
-					//}
-					//else
-					//{
-					//	cluster[i].position -= new Vector3(0, 0, fragment.localScale.x*Mathf.Sqrt(2)/2);
-					//}
-				}
+                    //{
+                    //	cluster[i].position += new Vector3(0, 0, fragment.localScale.x*Mathf.Sqrt(2)/2);
+                    //}
+                    //else
+                    //{
+                    //	cluster[i].position -= new Vector3(0, 0, fragment.localScale.x*Mathf.Sqrt(2)/2);
+                    //}
+                }
 
 				if (!tunneling)
 					break;
@@ -892,21 +898,21 @@ public class scatterCluster : MonoBehaviour {
 		{
 			Vector3 currentPosition = character.position;
 
-			if (positionDataCount < 60*60*60*4*4-16)
-			{
-				System.Array.Copy (System.BitConverter.GetBytes ((float)(System.DateTime.Now - startTime).TotalSeconds), 0,
-				                   positionData, positionDataCount, sizeof(float));
-				positionDataCount += sizeof(float);
-				System.Array.Copy (System.BitConverter.GetBytes (currentPosition.x), 0,
-				                   positionData, positionDataCount, sizeof(float));
-				positionDataCount += sizeof(float);
-				System.Array.Copy (System.BitConverter.GetBytes (currentPosition.y), 0,
-				                   positionData, positionDataCount, sizeof(float));
-				positionDataCount += sizeof(float);
-				System.Array.Copy (System.BitConverter.GetBytes (currentPosition.z), 0,
-				                   positionData, positionDataCount, sizeof(float));
-				positionDataCount += sizeof(float);
-			}
+			//if (positionDataCount < 60*60*60*4*4-16)
+			//{
+			//	System.Array.Copy (System.BitConverter.GetBytes ((float)(System.DateTime.Now - startTime).TotalSeconds), 0,
+			//	                   positionData, positionDataCount, sizeof(float));
+			//	positionDataCount += sizeof(float);
+			//	System.Array.Copy (System.BitConverter.GetBytes (currentPosition.x), 0,
+			//	                   positionData, positionDataCount, sizeof(float));
+			//	positionDataCount += sizeof(float);
+			//	System.Array.Copy (System.BitConverter.GetBytes (currentPosition.y), 0,
+			//	                   positionData, positionDataCount, sizeof(float));
+			//	positionDataCount += sizeof(float);
+			//	System.Array.Copy (System.BitConverter.GetBytes (currentPosition.z), 0,
+			//	                   positionData, positionDataCount, sizeof(float));
+			//	positionDataCount += sizeof(float);
+			//}
 			
 			if (currentPosition.x < leftMostX)
 			{
@@ -1240,10 +1246,5 @@ public class scatterCluster : MonoBehaviour {
 			progress /= staircases.Length;
 			progressDisplay.GetComponent<TextMesh> ().text = string.Format("{0}%", progress*100);
 		}
-	}
-
-	void copyMaterial(GameObject anObject)
-	{
-		anObject.GetComponent<Renderer>().material = new Material (anObject.GetComponent<Renderer>().material);
 	}
 }
