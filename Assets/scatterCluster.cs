@@ -37,7 +37,7 @@ public class Staircase
 	static bool samplingMode = true;
     static bool samplingExponentially = true;
     private const int sampleNumber = 20;
-	private const int totalTrials = 100000;
+	private const int totalTrials = 50000;
 	static private float initDistance = 0.2f;
 	private int currentLevel;
 	private int[] rightCount;
@@ -45,7 +45,7 @@ public class Staircase
 	private int[] disagreeCount;
 
     // recordMode records the raw output of ideal observer, without comparing two targets
-    static bool recordMode = false;
+    public static bool recordMode = false;
     private int[] noOfRecords;
     private float[][] nearRecords;
     private float[][] farRecords;
@@ -86,21 +86,45 @@ public class Staircase
 		rightCount = new int[sampleNumber];
 		wrongCount = new int[sampleNumber];
 		disagreeCount = new int[sampleNumber];
-        noOfRecords = new int[sampleNumber];
-        nearRecords = new float[sampleNumber][];
-        farRecords = new float[sampleNumber][];
+        if (recordMode)
+        {
+            noOfRecords = new int[sampleNumber];
+            nearRecords = new float[sampleNumber][];
+            farRecords = new float[sampleNumber][];
+        }
         for (int i = 0; i < sampleNumber; i++)
 		{
 			wrongCount[i] = 0;
 			rightCount[i] = 0;
 			disagreeCount[i] = 0;
-            noOfRecords[i] = 0;
-            nearRecords[i] = new float[totalTrials/(sampleNumber-1)];
-            farRecords[i] = new float[totalTrials / (sampleNumber - 1)];
-		}
-	}
+            if (recordMode)
+            {
+                noOfRecords[i] = 0;
+                nearRecords[i] = new float[totalTrials / (sampleNumber - 1)];
+                farRecords[i] = new float[totalTrials / (sampleNumber - 1)];
+            }
+        }
 
-	public float currentDistance()
+        if ((stereo && !montion && density && !hollow && uneven && widen && !strip)
+            || (!stereo && montion && density && hollow && uneven && !widen && strip)
+            || (stereo && !montion && density && !hollow && !uneven && widen && !strip)
+            || (!stereo && !montion && density && !hollow && !uneven && widen && !strip)
+            || (stereo && !montion && density && !hollow && uneven && !widen && strip)
+            || (stereo && montion && density && hollow && !uneven && !widen && strip)
+            || (!stereo && !montion && density && hollow && !uneven && widen && !strip)
+            || (stereo && montion && density && !hollow && uneven && widen && !strip)
+            || (!stereo && !montion && density && !hollow && !uneven && !widen && strip)
+            || (stereo && montion && density && !hollow && !uneven && widen && !strip)
+            || (stereo && !montion && density && hollow && uneven && !widen && strip)
+            || (stereo && !montion && density && hollow && !uneven && widen && !strip)
+            || (stereo && montion && density && !hollow && uneven && !widen && strip)
+            || (!stereo && !montion && density && hollow && uneven && widen && !strip)
+            || (stereo && !montion && density && hollow && !uneven && !widen && strip)
+            || (!stereo && montion && density && !hollow && !uneven && widen && !strip))
+            finalResult = 0;
+    }
+
+    public float currentDistance()
 	{
 		if (samplingMode)
 			return distanceFromRatioLevel(stepDownRatio, currentLevel);
@@ -374,6 +398,7 @@ public class scatterCluster : MonoBehaviour {
 	private bool restPeriod;
 	private bool movementWarning;
 	private bool completed;
+    static private float initialDistance = 0.12f;
 	//private byte[] positionData;
 	//private int positionDataCount;
 	//private System.DateTime startTime;
@@ -469,7 +494,7 @@ public class scatterCluster : MonoBehaviour {
 
 		for (int i = 0; i < staircaseCount; i++)
 		{
-			staircases[i].results[0] = maxHeight * 0.2f;
+			staircases[i].results[0] = initialDistance;
 			staircases[i].filename = filename;
 		}
 		currentStaircase = staircases [Random.Range (0, staircaseCount)];
@@ -924,30 +949,33 @@ public class scatterCluster : MonoBehaviour {
 			}
 		}
 		
-		if (!size)
-		{
-			redCube1.localScale = redCube1Scale * (character.position.z - redCube1.position.z) / (character.position.z - maxHeight/2);
-			redCube2.localScale = redCube2Scale * (character.position.z - redCube2.position.z) / (character.position.z - maxHeight/2);
-//			for (int i = 0; i < fragCount; i++)
-//			{
-//				if (cluster[i] != null)
-//				{
-//					cluster[i].localScale = fragment.localScale * clusterScales[i] * (character.position.z - cluster[i].position.z) / (character.position.z - maxHeight/2);
-//				}
-//			}
-		}
-		else
-		{
-			redCube1.localScale = redCube1Scale;
-			redCube2.localScale = redCube2Scale;
-			for (int i = 0; i < fragCount; i++)
-			{
-				if (cluster[i] != null)
-				{
-					cluster[i].localScale = fragment.localScale * clusterScales[i];
-				}
-			}
-		}
+        if (redCube1)
+        {
+            if (!size)
+            {
+                redCube1.localScale = redCube1Scale * (character.position.z - redCube1.position.z) / (character.position.z - maxHeight / 2);
+                redCube2.localScale = redCube2Scale * (character.position.z - redCube2.position.z) / (character.position.z - maxHeight / 2);
+                //			for (int i = 0; i < fragCount; i++)
+                //			{
+                //				if (cluster[i] != null)
+                //				{
+                //					cluster[i].localScale = fragment.localScale * clusterScales[i] * (character.position.z - cluster[i].position.z) / (character.position.z - maxHeight/2);
+                //				}
+                //			}
+            }
+            else
+            {
+                redCube1.localScale = redCube1Scale;
+                redCube2.localScale = redCube2Scale;
+                for (int i = 0; i < fragCount; i++)
+                {
+                    if (cluster[i] != null)
+                    {
+                        cluster[i].localScale = fragment.localScale * clusterScales[i];
+                    }
+                }
+            }
+        }
 		
 		if (Input.GetKeyDown(KeyCode.LeftControl))
 		{
@@ -1016,6 +1044,22 @@ public class scatterCluster : MonoBehaviour {
 		{
 			if (!observed && (System.DateTime.Now - clusterTimestamp).TotalSeconds > 0.01)
 			{
+                //if (currentStaircase.currentDistance() >= 0.2)
+                //{
+                //    if (redCube1.position.z <= redCube2.position.z)
+                //    {
+                //        observedResult = true;
+                //    }
+                //    else
+                //    {
+                //        observedResult = false;
+                //    }
+                //}
+                //else
+                //{
+                //    observedResult = (Random.value > 0.5 ? true : false);
+                //}
+                
                 // temparal code, motion means use visibility observer, otherwise use context observer
                 if (!currentStaircase.montion)
                 //if ((!currentStaircase.hollow && currentStaircase.uneven) || (currentStaircase.hollow && !currentStaircase.uneven))
@@ -1045,9 +1089,12 @@ public class scatterCluster : MonoBehaviour {
                     }
 
                     // recordMode
-                    Transform nearCube = redCube1.position.z > redCube2.position.z ? redCube2 : redCube1;
-                    Transform farCube = redCube1 == nearCube ? redCube2 : redCube1;
-                    currentStaircase.recordNearFar(testContextDistance(monoEye, nearCube), testContextDistance(monoEye, farCube));
+                    if (Staircase.recordMode)
+                    {
+                        Transform nearCube = redCube1.position.z > redCube2.position.z ? redCube2 : redCube1;
+                        Transform farCube = redCube1 == nearCube ? redCube2 : redCube1;
+                        currentStaircase.recordNearFar(testContextDistance(monoEye, nearCube), testContextDistance(monoEye, farCube));
+                    }
                 }
                 else
                 {
@@ -1072,10 +1119,14 @@ public class scatterCluster : MonoBehaviour {
                         observedResult = (Random.value > 0.5 ? true : false);
 
                     // recordMode
-                    Transform nearCube = redCube1.position.z > redCube2.position.z ? redCube2 : redCube1;
-                    Transform farCube = redCube1 == nearCube ? redCube2 : redCube1;
-                    currentStaircase.recordNearFar(testVisibility(monoEye, nearCube), testVisibility(monoEye, farCube));
+                    if (Staircase.recordMode)
+                    {
+                        Transform nearCube = redCube1.position.z > redCube2.position.z ? redCube2 : redCube1;
+                        Transform farCube = redCube1 == nearCube ? redCube2 : redCube1;
+                        currentStaircase.recordNearFar(testVisibility(monoEye, nearCube), testVisibility(monoEye, farCube));
+                    }
                 }
+
                 observed = true;
 			}
 
