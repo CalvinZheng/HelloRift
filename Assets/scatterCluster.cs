@@ -37,7 +37,7 @@ public class Staircase
 	static bool samplingMode = true;
     static bool samplingExponentially = true;
     private const int sampleNumber = 20;
-	private const int totalTrials = 50000;
+	private const int totalTrials = 100000;
 	static private float initDistance = 0.2f;
 	private int currentLevel;
 	private int[] rightCount;
@@ -105,22 +105,7 @@ public class Staircase
             }
         }
 
-        if ((stereo && !montion && density && !hollow && uneven && widen && !strip)
-            || (!stereo && montion && density && hollow && uneven && !widen && strip)
-            || (stereo && !montion && density && !hollow && !uneven && widen && !strip)
-            || (!stereo && !montion && density && !hollow && !uneven && widen && !strip)
-            || (stereo && !montion && density && !hollow && uneven && !widen && strip)
-            || (stereo && montion && density && hollow && !uneven && !widen && strip)
-            || (!stereo && !montion && density && hollow && !uneven && widen && !strip)
-            || (stereo && montion && density && !hollow && uneven && widen && !strip)
-            || (!stereo && !montion && density && !hollow && !uneven && !widen && strip)
-            || (stereo && montion && density && !hollow && !uneven && widen && !strip)
-            || (stereo && !montion && density && hollow && uneven && !widen && strip)
-            || (stereo && !montion && density && hollow && !uneven && widen && !strip)
-            || (stereo && montion && density && !hollow && uneven && !widen && strip)
-            || (!stereo && !montion && density && hollow && uneven && widen && !strip)
-            || (stereo && !montion && density && hollow && !uneven && !widen && strip)
-            || (!stereo && montion && density && !hollow && !uneven && widen && !strip))
+        if (!(stereo && montion && density && !hollow && uneven && widen && !strip))
             finalResult = 0;
     }
 
@@ -626,26 +611,24 @@ public class scatterCluster : MonoBehaviour {
 
 		bool rightFirst = Random.value > 0.5;
 
-		if (redCube1 != null)
-		{
-			Destroy(redCube1.gameObject);
-		}
-		if (redCube2 != null)
-		{
-			Destroy(redCube2.gameObject);
-		}
+		if (redCube1 == null)
+        {
+            redCube1 = Instantiate(redCube) as Transform;
+        }
+		if (redCube2 == null)
+        {
+            redCube2 = Instantiate(redCube) as Transform;
+        }
 		if (currentStaircase.strip)
 		{
-			redCube1 = Instantiate (redCube) as Transform;
 			redCube1.gameObject.SetActive (true);
-			redCube1.localScale += new Vector3 (maxHeight*2, 0, 0);
+			redCube1.localScale = redCube.localScale + new Vector3 (maxHeight*2, 0, 0);
 			redCube1.position = new Vector3 (0,
 			                                 maxHeight/3*2,
 			                                 maxHeight/2+(rightFirst?1:-1)*currentDistance/2);
 			
-			redCube2 = Instantiate (redCube) as Transform;
 			redCube2.gameObject.SetActive (true);
-			redCube2.localScale += new Vector3 (maxHeight*2, 0, 0);
+			redCube2.localScale = redCube.localScale + new Vector3 (maxHeight*2, 0, 0);
 			redCube2.position = new Vector3 (0,
 			                                 maxHeight/3,
 			                                 maxHeight/2+(!rightFirst?1:-1)*currentDistance/2);
@@ -655,19 +638,17 @@ public class scatterCluster : MonoBehaviour {
 		else
 		{
 			bool leftBig = (Random.value > 0.5f);
-
-			redCube1 = Instantiate (redCube) as Transform;
+            
 			redCube1.gameObject.SetActive (true);
-			redCube1.localScale += new Vector3 (currentStaircase.widen ? redCube.localScale.x : 0, 0, 0);
+			redCube1.localScale = redCube.localScale + new Vector3 (currentStaircase.widen ? redCube.localScale.x : 0, 0, 0);
 			if (currentStaircase.randomSize)
 				redCube1.localScale *= (leftBig ? 1.2f : 0.8f);
 			redCube1.position = new Vector3 (-maxHeight/4 - (currentStaircase.widen ? redCube.localScale.x/2 : 0) + (Random.value-0.5f)*2*maxHeight/20,
 			                                 maxHeight/2 + (Random.value-0.5f)*2*maxHeight/20*1.5f,
 			                                 maxHeight/2+(rightFirst?1:-1)*currentDistance/2);
-
-			redCube2 = Instantiate (redCube) as Transform;
+            
 			redCube2.gameObject.SetActive (true);
-			redCube2.localScale += new Vector3 (currentStaircase.widen ? redCube.localScale.x : 0, 0, 0);
+			redCube2.localScale = redCube.localScale + new Vector3 (currentStaircase.widen ? redCube.localScale.x : 0, 0, 0);
 			if (currentStaircase.randomSize)
 				redCube2.localScale *= (!leftBig ? 1.2f : 0.8f);
 			redCube2.position = new Vector3 (maxHeight/4 + (currentStaircase.widen ? redCube.localScale.x/2 : 0) + (Random.value-0.5f)*2*maxHeight/20,
@@ -682,17 +663,24 @@ public class scatterCluster : MonoBehaviour {
 
 		for (int i = 0; i < fragCount; i++)
 		{
-			if (cluster[i] != null)
-			{
-				Destroy(cluster[i].gameObject);
-			}
-		}
+            //if (cluster[i] != null)
+            //{
+            //    Destroy(cluster[i].gameObject);
+            //    cluster[i] = null;
+            //}
+            if (cluster[i] == null)
+            {
+                cluster[i] = Instantiate(fragment) as Transform;
+                cluster[i].gameObject.SetActive(true);
+            }
+        }
 
         for (int i = 0; i < realFragCount; i++)
 		{
-			cluster[i] = Instantiate(fragment) as Transform;
-			cluster[i].gameObject.SetActive(true);
-			while(true)
+            //cluster[i] = Instantiate(fragment) as Transform;
+            //cluster[i].gameObject.SetActive(true);
+            cluster[i].localScale = fragment.localScale;
+            while (true)
             {
                 cluster[i].rotation = Random.rotation;
                 clusterScales[i] = Random.Range(0.8f, 1.2f);
