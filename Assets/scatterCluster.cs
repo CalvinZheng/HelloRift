@@ -104,9 +104,6 @@ public class Staircase
                 farRecords[i] = new float[totalTrials / (sampleNumber - 1)];
             }
         }
-
-        if (!(stereo && montion && density && !hollow && uneven && widen && !strip))
-            finalResult = 0;
     }
 
     public float currentDistance()
@@ -889,14 +886,14 @@ public class scatterCluster : MonoBehaviour {
 		float result = (float)hitCount / totalCount;
 		if (currentStaircase.size)
 		{
-            // if size cue presents then result is estimated number of pixels visible
+            // if size cue presents then result is estimated number of pixels visible, i.e. multiply by calculated area
 			result *= Mathf.Pow(12*Mathf.Sqrt(3)/(1.2f+end.position.z*2),2);
 		}
 
 		if (currentStaircase.size && (currentStaircase.uneven || currentStaircase.hollow) && !(currentStaircase.uneven && currentStaircase.hollow))
 		{
             // if size cue presents but no visiblility cues, then result is max distance of visbile points, in visiual angle
-			result = Mathf.Max (maxX - minX, maxY - minY);
+			result = maxY - minY;
 			result /= end.position.z - start.position.z;
 		}
 		return result;
