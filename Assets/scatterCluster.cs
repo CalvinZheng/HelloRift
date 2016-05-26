@@ -899,10 +899,49 @@ public class scatterCluster : MonoBehaviour {
 		return result;
 	}
 
+    float testBinocularVisibility(Transform leftEye, Transform rightEye, Transform end)
+    {
+        RaycastHit hitLeft, hitRight;
+        int hitCount = 0;
+        int totalCount = 0;
+        float accurancy = 0.0005f;
+        for (float xStep = -end.localScale.x / 2 + accurancy; xStep < end.localScale.x / 2 - accurancy; xStep += accurancy)
+        {
+            for (float yStep = -end.localScale.y / 2 + accurancy; yStep < end.localScale.y / 2 - accurancy; yStep += accurancy)
+            {
+                Physics.Raycast(leftEye.position, end.position - leftEye.position + new Vector3(xStep, yStep, 0), out hitLeft);
+                Physics.Raycast(rightEye.position, end.position - rightEye.position + new Vector3(xStep, yStep, 0), out hitRight);
+                if (hitLeft.collider != shield1.gameObject.GetComponent<Collider>()
+                    && hitLeft.collider != shield2.gameObject.GetComponent<Collider>()
+                    && hitRight.collider != shield1.gameObject.GetComponent<Collider>()
+                    && hitRight.collider != shield2.gameObject.GetComponent<Collider>())
+                {
+                    totalCount++;
+                }
+                if (currentStaircase.montion)
+                {
+                    // OR
+                    if (hitLeft.collider == end.gameObject.GetComponent<Collider>() || hitRight.collider == end.gameObject.GetComponent<Collider>())
+                    {
+                        hitCount++;
+                    }
+                }
+                else
+                {
+                    // AND
+                    if (hitLeft.collider == end.gameObject.GetComponent<Collider>() && hitRight.collider == end.gameObject.GetComponent<Collider>())
+                    {
+                        hitCount++;
+                    }
+                }
+            }
+        }
 
-	
-	// Update is called once per frame
-	void Update ()
+        return (float)hitCount / totalCount;
+    }
+
+    // Update is called once per frame
+    void Update ()
 	{
 		if (!completed)
 		{
@@ -1109,6 +1148,7 @@ public class scatterCluster : MonoBehaviour {
                         Transform nearCube = redCube1.position.z > redCube2.position.z ? redCube2 : redCube1;
                         Transform farCube = redCube1 == nearCube ? redCube2 : redCube1;
                         currentStaircase.recordNearFar(testVisibility(monoEye, nearCube), testVisibility(monoEye, farCube));
+                        //currentStaircase.recordNearFar(testBinocularVisibility(leftEye, rightEye, nearCube), testBinocularVisibility(leftEye, rightEye, farCube));
                     }
                 }
 
