@@ -4,14 +4,14 @@ This project/experiment is designed to test and understand how human vision perc
 
 System requirements:
 
-* Requires Unity 5.0.4f1 (NOT with above 5.1 as Unity revamped VR support and I can't find a way to disable binocular camera)
+* Requires Unity 5.0.4f1 (NOT with above 5.1 as Unity revamped VR support and I can't find a way to disable binocular camera) (Edit: new version is also fine, just don't use the built-in VR support)
 * Requires Oculus Rift DK2 (Only tested device, maybe with future commercial release version, but surely not compatible with any VR without position tracking, i.e. DK1 etc.)
 * Included Unity 4.x Legacy Integration V0.8.0.0 in the project, no need to install seperately. (Do NOT try to upgrade to newer version, as it has the same issue with Unity 5.1 and above)
 * Compatible with Windows and Mac OS X
 
 Quick starting steps:
 
-1. install Unity 5.0.4f1
+1. install Unity
 2. install Oculus Runtime for Windows V0.5.0.1-beta or for OS X (only this version, higher version requires higher Unity version which is not compatible)
 3. using Unity to open this project
 4. File -> Build Settings -> PC & Mac Standalone -> Build
