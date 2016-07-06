@@ -34,16 +34,23 @@ public class Staircase
     public bool simulateAcurity;
 
 	//If you want the experiments to run at specified distances for multiple time, instead of staircase method, set samplingMode to true. We usually run idealObserver using this mode.
-	static bool samplingMode = false;
-	static private int sampleNumber = 20;
-	static private int totalTrials = 100000;
+	static bool samplingMode = true;
+    static bool samplingExponentially = true;
+    private const int sampleNumber = 20;
+	private const int totalTrials = 100000;
 	static private float initDistance = 0.2f;
 	private int currentLevel;
 	private int[] rightCount;
 	private int[] wrongCount;
 	private int[] disagreeCount;
 
-	public Staircase(bool stereo, bool montion, bool density, bool hollow, bool uneven, bool widen, bool strip)
+    // recordMode records the raw output of ideal observer, without comparing two targets
+    public static bool recordMode = false;
+    private int[] noOfRecords;
+    private float[][] nearRecords;
+    private float[][] farRecords;
+
+    public Staircase(bool stereo, bool montion, bool density, bool hollow, bool uneven, bool widen, bool strip)
 	{
 		this.stereo = stereo;
 		this.montion = montion;
@@ -79,21 +86,38 @@ public class Staircase
 		rightCount = new int[sampleNumber];
 		wrongCount = new int[sampleNumber];
 		disagreeCount = new int[sampleNumber];
-		for (int i = 0; i < sampleNumber; i++)
+        if (recordMode)
+        {
+            noOfRecords = new int[sampleNumber];
+            nearRecords = new float[sampleNumber][];
+            farRecords = new float[sampleNumber][];
+        }
+        for (int i = 0; i < sampleNumber; i++)
 		{
 			wrongCount[i] = 0;
 			rightCount[i] = 0;
 			disagreeCount[i] = 0;
-		}
-	}
+            if (recordMode)
+            {
+                noOfRecords[i] = 0;
+                nearRecords[i] = new float[totalTrials / (sampleNumber - 1)];
+                farRecords[i] = new float[totalTrials / (sampleNumber - 1)];
+            }
+        }
+    }
 
-	public float currentDistance()
+    public float currentDistance()
 	{
 		if (samplingMode)
-			return initDistance * Mathf.Pow (stepDownRatio, currentLevel);
+			return distanceFromRatioLevel(stepDownRatio, currentLevel);
 		else
 			return results [currentStep];
 	}
+
+    float distanceFromRatioLevel(float ratio, float level)
+    {
+        return samplingExponentially ? initDistance * Mathf.Pow(ratio, level) : initDistance / sampleNumber * (sampleNumber-level);
+    }
 
 	public bool finished()
 	{
@@ -197,6 +221,15 @@ public class Staircase
 		disagreeCount [currentLevel]++;
 	}
 
+    public void recordNearFar(float near, float far)
+    {
+        if (noOfRecords[currentLevel] >= nearRecords[currentLevel].Length)
+            return;
+        nearRecords[currentLevel][noOfRecords[currentLevel]] = near;
+        farRecords[currentLevel][noOfRecords[currentLevel]] = far;
+        noOfRecords[currentLevel]++;
+    }
+
 	public string conditionLabel()
 	{
 		return "("+(strip?"bar+":"")+(stereo?"stereo+":"")+(montion?"motion+":"")+(!density?"base+":"")+(size?"size+":"")+(randomSize?"Rsize+":"")+(uneven?"50/50+":"")+(hollow?"hollow+":"")+ (simulateAcurity ? "sim+" : "")+")";
@@ -234,10 +267,50 @@ public class Staircase
 			sw.WriteLine(label+",{0}", finalResult);
 			if (samplingMode)
 			{
-				for (int i = 0; i < sampleNumber; i++)
-				{
-					sw.WriteLine("{0},{1},{2}", initDistance * Mathf.Pow (stepDownRatio, i), (float)rightCount[i]/(wrongCount[i]+rightCount[i]), (float)disagreeCount[i]/(wrongCount[i]+rightCount[i]));
-				}
+                if (recordMode)
+                {
+                    for (int i = 0; i < sampleNumber; i++)
+                    {
+                        float sum = 0;
+                        for (int j = 0; j < noOfRecords[i]; j++)
+                        {
+                            sum += nearRecords[i][j];
+                        }
+                        float mean = sum / noOfRecords[i];
+                        float variance = 0;
+                        for (int j = 0; j < noOfRecords[i]; j++)
+                        {
+                            variance += (mean - nearRecords[i][j])* (mean - nearRecords[i][j]);
+                        }
+                        float std = Mathf.Sqrt(variance / (noOfRecords[i] - 1));
+                        float error = std / Mathf.Sqrt(noOfRecords[i]);
+                        sw.WriteLine("{0},{1},{2},{3}", 0.1f - distanceFromRatioLevel(stepDownRatio, i) / 2, mean, std, error);
+                    }
+                    for (int i = sampleNumber - 1; i >= 0; i--)
+                    {
+                        float sum = 0;
+                        for (int j = 0; j < noOfRecords[i]; j++)
+                        {
+                            sum += farRecords[i][j];
+                        }
+                        float mean = sum / noOfRecords[i];
+                        float variance = 0;
+                        for (int j = 0; j < noOfRecords[i]; j++)
+                        {
+                            variance += (mean - farRecords[i][j]) * (mean - farRecords[i][j]);
+                        }
+                        float std = Mathf.Sqrt(variance / (noOfRecords[i] - 1));
+                        float error = std / Mathf.Sqrt(noOfRecords[i]);
+                        sw.WriteLine("{0},{1},{2}, {3}", 0.1f + distanceFromRatioLevel(stepDownRatio, i) / 2, mean, std, error);
+                    }
+                }
+                else
+                {
+                    for (int i = 0; i < sampleNumber; i++)
+                    {
+                        sw.WriteLine("{0},{1},{2}", distanceFromRatioLevel(stepDownRatio, i), (float)rightCount[i] / (wrongCount[i] + rightCount[i]), (float)disagreeCount[i] / (wrongCount[i] + rightCount[i]));
+                    }
+                }
 			}
 			sw.Close();
 
@@ -307,9 +380,10 @@ public class scatterCluster : MonoBehaviour {
 	private bool restPeriod;
 	private bool movementWarning;
 	private bool completed;
-	private byte[] positionData;
-	private int positionDataCount;
-	private System.DateTime startTime;
+    static private float initialDistance = 0.12f;
+	//private byte[] positionData;
+	//private int positionDataCount;
+	//private System.DateTime startTime;
 	private float leftMostX;
 	private float rightMostX;
 	private bool observed;
@@ -341,34 +415,45 @@ public class scatterCluster : MonoBehaviour {
 		}
 
 	    //Wanna use other experiment conditions? change the count here and follow it with staircase objects of your choosing.
-		staircaseCount = 26;
+		staircaseCount = 32;
 		staircases = new Staircase[staircaseCount];
 
         //*EXAMPLE* new StairCase(istereo, imontion, dense, hollow, uneven, widen, strip);
 
-        staircases[0] = new Staircase(true, true, false, false, false, true, false);
-        staircases[0].size = false;
-
-        for (int i = 0; i < 14; i++)
+        for (int i = 0; i < 32; i++)
         {
             bool hollow = i % 4 == 1 || i % 4 == 2;
             bool uneven = i % 4 == 1 || i % 4 == 3;
-            bool isize = false;
-            bool istereo = i / 4 == 0 || i / 4 == 2;
-            bool imotion = i / 4 == 1 || i / 4 == 2;
-            staircases[i + 1] = new Staircase(istereo, imotion, true, hollow, uneven, true, false);
-            staircases[i + 1].size = isize;
+            bool istereo = i / 4 == 0 || i / 4 == 2 || i / 4 == 4 || i / 4 == 6;
+            bool imotion = i / 4 == 1 || i / 4 == 2 || i / 4 == 5 || i / 4 == 6;
+            bool strip = i < 16;
+            staircases[i] = new Staircase(istereo, imotion, true, hollow, uneven, !strip, strip);
+            staircases[i].size = false;
         }
 
-        for (int i = 0; i < 11; i++)
-        {
-            bool hollow = i % 3 == 1;
-            bool uneven = i % 3 == 1 || i % 3 == 2;
-            bool istereo = i / 3 == 0 || i / 3 == 2;
-            bool imotion = i / 3 == 1 || i / 3 == 2;
-            staircases[i + 15] = new Staircase(istereo, imotion, true, hollow, uneven, false, true);
-            staircases[i + 15].size = false;
-        }
+        //staircases[0] = new Staircase(true, true, false, false, false, true, false);
+        //staircases[0].size = false;
+
+        //for (int i = 0; i < 14; i++)
+        //{
+        //    bool hollow = i % 4 == 1 || i % 4 == 2;
+        //    bool uneven = i % 4 == 1 || i % 4 == 3;
+        //    bool isize = false;
+        //    bool istereo = i / 4 == 0 || i / 4 == 2;
+        //    bool imotion = i / 4 == 1 || i / 4 == 2;
+        //    staircases[i + 1] = new Staircase(istereo, imotion, true, hollow, uneven, true, false);
+        //    staircases[i + 1].size = isize;
+        //}
+
+        //for (int i = 0; i < 11; i++)
+        //{
+        //    bool hollow = i % 3 == 1;
+        //    bool uneven = i % 3 == 1 || i % 3 == 2;
+        //    bool istereo = i / 3 == 0 || i / 3 == 2;
+        //    bool imotion = i / 3 == 1 || i / 3 == 2;
+        //    staircases[i + 15] = new Staircase(istereo, imotion, true, hollow, uneven, false, true);
+        //    staircases[i + 15].size = false;
+        //}
 
         stereo = true;
 		montion = true;
@@ -391,14 +476,14 @@ public class scatterCluster : MonoBehaviour {
 
 		for (int i = 0; i < staircaseCount; i++)
 		{
-			staircases[i].results[0] = maxHeight * 0.2f;
+			staircases[i].results[0] = initialDistance;
 			staircases[i].filename = filename;
 		}
 		currentStaircase = staircases [Random.Range (0, staircaseCount)];
 
-		positionData = new byte[60 * 60 * 60 * 4 * 4];
-		positionDataCount = 0;
-		startTime = System.DateTime.Now;
+		//positionData = new byte[60 * 60 * 60 * 4 * 4];
+		//positionDataCount = 0;
+		//startTime = System.DateTime.Now;
 
 		resetCluster ();
 	}
@@ -429,7 +514,9 @@ public class scatterCluster : MonoBehaviour {
 
 	void resetCluster()
 	{
-		float currentDistance;
+        System.GC.Collect();
+
+        float currentDistance;
 		if (continousMode)
 		{
 			currentDistance = 0.8f;
@@ -440,9 +527,9 @@ public class scatterCluster : MonoBehaviour {
 			if (!checkIfAnyAvailable())
 			{
 				completed = true;
-				byte[] dataToWrite = new byte[positionDataCount];
-				System.Array.Copy(positionData, 0, dataToWrite, 0, positionDataCount);
-				File.WriteAllBytes("output/tracking-"+filename, dataToWrite);
+				//byte[] dataToWrite = new byte[positionDataCount];
+				//System.Array.Copy(positionData, 0, dataToWrite, 0, positionDataCount);
+				//File.WriteAllBytes("output/tracking-"+filename, dataToWrite);
 				return;
 			}
 
@@ -521,26 +608,24 @@ public class scatterCluster : MonoBehaviour {
 
 		bool rightFirst = Random.value > 0.5;
 
-		if (redCube1 != null)
-		{
-			Destroy(redCube1.gameObject);
-		}
-		if (redCube2 != null)
-		{
-			Destroy(redCube2.gameObject);
-		}
+		if (redCube1 == null)
+        {
+            redCube1 = Instantiate(redCube) as Transform;
+        }
+		if (redCube2 == null)
+        {
+            redCube2 = Instantiate(redCube) as Transform;
+        }
 		if (currentStaircase.strip)
 		{
-			redCube1 = Instantiate (redCube) as Transform;
 			redCube1.gameObject.SetActive (true);
-			redCube1.localScale += new Vector3 (maxHeight*2, 0, 0);
+			redCube1.localScale = redCube.localScale + new Vector3 (maxHeight*2, 0, 0);
 			redCube1.position = new Vector3 (0,
 			                                 maxHeight/3*2,
 			                                 maxHeight/2+(rightFirst?1:-1)*currentDistance/2);
 			
-			redCube2 = Instantiate (redCube) as Transform;
 			redCube2.gameObject.SetActive (true);
-			redCube2.localScale += new Vector3 (maxHeight*2, 0, 0);
+			redCube2.localScale = redCube.localScale + new Vector3 (maxHeight*2, 0, 0);
 			redCube2.position = new Vector3 (0,
 			                                 maxHeight/3,
 			                                 maxHeight/2+(!rightFirst?1:-1)*currentDistance/2);
@@ -550,19 +635,17 @@ public class scatterCluster : MonoBehaviour {
 		else
 		{
 			bool leftBig = (Random.value > 0.5f);
-
-			redCube1 = Instantiate (redCube) as Transform;
+            
 			redCube1.gameObject.SetActive (true);
-			redCube1.localScale += new Vector3 (currentStaircase.widen ? redCube.localScale.x : 0, 0, 0);
+			redCube1.localScale = redCube.localScale + new Vector3 (currentStaircase.widen ? redCube.localScale.x : 0, 0, 0);
 			if (currentStaircase.randomSize)
 				redCube1.localScale *= (leftBig ? 1.2f : 0.8f);
 			redCube1.position = new Vector3 (-maxHeight/4 - (currentStaircase.widen ? redCube.localScale.x/2 : 0) + (Random.value-0.5f)*2*maxHeight/20,
 			                                 maxHeight/2 + (Random.value-0.5f)*2*maxHeight/20*1.5f,
 			                                 maxHeight/2+(rightFirst?1:-1)*currentDistance/2);
-
-			redCube2 = Instantiate (redCube) as Transform;
+            
 			redCube2.gameObject.SetActive (true);
-			redCube2.localScale += new Vector3 (currentStaircase.widen ? redCube.localScale.x : 0, 0, 0);
+			redCube2.localScale = redCube.localScale + new Vector3 (currentStaircase.widen ? redCube.localScale.x : 0, 0, 0);
 			if (currentStaircase.randomSize)
 				redCube2.localScale *= (!leftBig ? 1.2f : 0.8f);
 			redCube2.position = new Vector3 (maxHeight/4 + (currentStaircase.widen ? redCube.localScale.x/2 : 0) + (Random.value-0.5f)*2*maxHeight/20,
@@ -577,21 +660,32 @@ public class scatterCluster : MonoBehaviour {
 
 		for (int i = 0; i < fragCount; i++)
 		{
-			if (cluster[i] != null)
-			{
-				Destroy(cluster[i].gameObject);
-			}
-		}
-
-        float longestFragmentExtend = 0;// fragment.localScale.x * Mathf.Sqrt(2) / 2 + 0.0001f;
+            //if (cluster[i] != null)
+            //{
+            //    Destroy(cluster[i].gameObject);
+            //    cluster[i] = null;
+            //}
+            if (cluster[i] == null)
+            {
+                cluster[i] = Instantiate(fragment) as Transform;
+                cluster[i].gameObject.SetActive(true);
+            }
+        }
 
         for (int i = 0; i < realFragCount; i++)
 		{
-			cluster[i] = Instantiate(fragment) as Transform;
-			cluster[i].gameObject.SetActive(true);
-			while(true)
-			{
-				if (currentStaircase.uneven)
+            //cluster[i] = Instantiate(fragment) as Transform;
+            //cluster[i].gameObject.SetActive(true);
+            cluster[i].localScale = fragment.localScale;
+            while (true)
+            {
+                cluster[i].rotation = Random.rotation;
+                clusterScales[i] = Random.Range(0.8f, 1.2f);
+                cluster[i].localScale *= clusterScales[i];
+                
+                float longestFragmentExtend = cluster[i].localScale.x * Mathf.Sqrt(2) / 2;
+
+                if (currentStaircase.uneven)
 				{
 					float x = Random.value*maxHeight-maxHeight/2;
 					float y = Random.value*maxHeight;
@@ -603,11 +697,13 @@ public class scatterCluster : MonoBehaviour {
 					}
 					bool leftOrUpSide = (currentStaircase.strip ? (y > maxHeight/2) : (x < 0));
 
-					if (leftOrUpSide)
+                    if (leftOrUpSide)
 					{
-						float frontLine = (currentStaircase.hollow ? Mathf.Min(redCube1.position.z, redCube2.position.z) - longestFragmentExtend : redCube1.position.z);
-						float backLine = (currentStaircase.hollow ? Mathf.Max(redCube1.position.z, redCube2.position.z) + longestFragmentExtend : redCube1.position.z);
-						if (rightFirst == (Random.value < usingUnevenRate))
+						float frontLine = (currentStaircase.hollow ? Mathf.Min(redCube1.position.z, redCube2.position.z) : redCube1.position.z);
+						float backLine = (currentStaircase.hollow ? Mathf.Max(redCube1.position.z, redCube2.position.z) : redCube1.position.z);
+                        frontLine -= longestFragmentExtend;
+                        backLine += longestFragmentExtend;
+                        if (rightFirst == (Random.value < usingUnevenRate))
 						{
 							z = Random.value*(maxHeight - backLine)+backLine;
                             //cluster[i].gameObject.SetActive(false);
@@ -620,9 +716,11 @@ public class scatterCluster : MonoBehaviour {
 					}
 					else
 					{
-						float frontLine = (currentStaircase.hollow ? Mathf.Min(redCube1.position.z, redCube2.position.z) - longestFragmentExtend : redCube2.position.z);
-						float backLine = (currentStaircase.hollow ? Mathf.Max(redCube1.position.z, redCube2.position.z) + longestFragmentExtend : redCube2.position.z);
-						if (!rightFirst == (Random.value < usingUnevenRate))
+						float frontLine = (currentStaircase.hollow ? Mathf.Min(redCube1.position.z, redCube2.position.z) : redCube2.position.z);
+						float backLine = (currentStaircase.hollow ? Mathf.Max(redCube1.position.z, redCube2.position.z) : redCube2.position.z);
+                        frontLine -= longestFragmentExtend;
+                        backLine += longestFragmentExtend;
+                        if (!rightFirst == (Random.value < usingUnevenRate))
 						{
 							z = Random.value*(maxHeight - backLine)+backLine;
                             //cluster[i].gameObject.SetActive(false);
@@ -652,17 +750,13 @@ public class scatterCluster : MonoBehaviour {
 				{
 					cluster[i].position = new Vector3(Random.value*maxHeight-maxHeight/2, Random.value*maxHeight, Random.value*maxHeight);
 				}
-                
-                cluster[i].rotation = Random.rotation;
-                clusterScales[i] = Random.Range(0.8f, 1.2f);
-                cluster[i].localScale *= clusterScales[i];
 
                 Bounds clusterBounds = cluster[i].GetComponent<Collider>().bounds;
 
 				if (redCube1.GetComponent<Collider>().bounds.Intersects(clusterBounds))
-				{
-                    continue;
-                    //Debug.Log(currentDistance);
+                {
+                    //continue;
+                    //Debug.Log("intersect!");
 					//if (cluster[i].position.z > redCube1.position.z)
 					//{
 					//	cluster[i].position += new Vector3(0, 0, fragment.localScale.x*Mathf.Sqrt(2)/2);
@@ -674,17 +768,17 @@ public class scatterCluster : MonoBehaviour {
 				}
 				if (redCube2.GetComponent<Collider>().bounds.Intersects(clusterBounds))
                 {
-                    continue;
-                    //Debug.Log(currentDistance);
+                    //continue;
+                    //Debug.Log("intersect!");
                     //if (cluster[i].position.z > redCube2.position.z)
-					//{
-					//	cluster[i].position += new Vector3(0, 0, fragment.localScale.x*Mathf.Sqrt(2)/2);
-					//}
-					//else
-					//{
-					//	cluster[i].position -= new Vector3(0, 0, fragment.localScale.x*Mathf.Sqrt(2)/2);
-					//}
-				}
+                    //{
+                    //	cluster[i].position += new Vector3(0, 0, fragment.localScale.x*Mathf.Sqrt(2)/2);
+                    //}
+                    //else
+                    //{
+                    //	cluster[i].position -= new Vector3(0, 0, fragment.localScale.x*Mathf.Sqrt(2)/2);
+                    //}
+                }
 
 				if (!tunneling)
 					break;
@@ -747,8 +841,11 @@ public class scatterCluster : MonoBehaviour {
                     if (hit.point.z > maxZ)
                         maxZ = hit.point.z;
                 }
-
             }
+        }
+        if (maxZ == -999)
+        {
+            maxZ = 0;
         }
         return maxZ;
     }
@@ -789,43 +886,82 @@ public class scatterCluster : MonoBehaviour {
 		float result = (float)hitCount / totalCount;
 		if (currentStaircase.size)
 		{
-            // if size cue presents then result is estimated number of pixels visible
+            // if size cue presents then result is estimated number of pixels visible, i.e. multiply by calculated area
 			result *= Mathf.Pow(12*Mathf.Sqrt(3)/(1.2f+end.position.z*2),2);
 		}
 
 		if (currentStaircase.size && (currentStaircase.uneven || currentStaircase.hollow) && !(currentStaircase.uneven && currentStaircase.hollow))
 		{
             // if size cue presents but no visiblility cues, then result is max distance of visbile points, in visiual angle
-			result = Mathf.Max (maxX - minX, maxY - minY);
+			result = maxY - minY;
 			result /= end.position.z - start.position.z;
 		}
 		return result;
 	}
 
+    float testBinocularVisibility(Transform leftEye, Transform rightEye, Transform end)
+    {
+        RaycastHit hitLeft, hitRight;
+        int hitCount = 0;
+        int totalCount = 0;
+        float accurancy = 0.0005f;
+        for (float xStep = -end.localScale.x / 2 + accurancy; xStep < end.localScale.x / 2 - accurancy; xStep += accurancy)
+        {
+            for (float yStep = -end.localScale.y / 2 + accurancy; yStep < end.localScale.y / 2 - accurancy; yStep += accurancy)
+            {
+                Physics.Raycast(leftEye.position, end.position - leftEye.position + new Vector3(xStep, yStep, 0), out hitLeft);
+                Physics.Raycast(rightEye.position, end.position - rightEye.position + new Vector3(xStep, yStep, 0), out hitRight);
+                if (hitLeft.collider != shield1.gameObject.GetComponent<Collider>()
+                    && hitLeft.collider != shield2.gameObject.GetComponent<Collider>()
+                    && hitRight.collider != shield1.gameObject.GetComponent<Collider>()
+                    && hitRight.collider != shield2.gameObject.GetComponent<Collider>())
+                {
+                    totalCount++;
+                }
+                if (currentStaircase.montion)
+                {
+                    // OR
+                    if (hitLeft.collider == end.gameObject.GetComponent<Collider>() || hitRight.collider == end.gameObject.GetComponent<Collider>())
+                    {
+                        hitCount++;
+                    }
+                }
+                else
+                {
+                    // AND
+                    if (hitLeft.collider == end.gameObject.GetComponent<Collider>() && hitRight.collider == end.gameObject.GetComponent<Collider>())
+                    {
+                        hitCount++;
+                    }
+                }
+            }
+        }
 
-	
-	// Update is called once per frame
-	void Update ()
+        return (float)hitCount / totalCount;
+    }
+
+    // Update is called once per frame
+    void Update ()
 	{
 		if (!completed)
 		{
 			Vector3 currentPosition = character.position;
 
-			if (positionDataCount < 60*60*60*4*4-16)
-			{
-				System.Array.Copy (System.BitConverter.GetBytes ((float)(System.DateTime.Now - startTime).TotalSeconds), 0,
-				                   positionData, positionDataCount, sizeof(float));
-				positionDataCount += sizeof(float);
-				System.Array.Copy (System.BitConverter.GetBytes (currentPosition.x), 0,
-				                   positionData, positionDataCount, sizeof(float));
-				positionDataCount += sizeof(float);
-				System.Array.Copy (System.BitConverter.GetBytes (currentPosition.y), 0,
-				                   positionData, positionDataCount, sizeof(float));
-				positionDataCount += sizeof(float);
-				System.Array.Copy (System.BitConverter.GetBytes (currentPosition.z), 0,
-				                   positionData, positionDataCount, sizeof(float));
-				positionDataCount += sizeof(float);
-			}
+			//if (positionDataCount < 60*60*60*4*4-16)
+			//{
+			//	System.Array.Copy (System.BitConverter.GetBytes ((float)(System.DateTime.Now - startTime).TotalSeconds), 0,
+			//	                   positionData, positionDataCount, sizeof(float));
+			//	positionDataCount += sizeof(float);
+			//	System.Array.Copy (System.BitConverter.GetBytes (currentPosition.x), 0,
+			//	                   positionData, positionDataCount, sizeof(float));
+			//	positionDataCount += sizeof(float);
+			//	System.Array.Copy (System.BitConverter.GetBytes (currentPosition.y), 0,
+			//	                   positionData, positionDataCount, sizeof(float));
+			//	positionDataCount += sizeof(float);
+			//	System.Array.Copy (System.BitConverter.GetBytes (currentPosition.z), 0,
+			//	                   positionData, positionDataCount, sizeof(float));
+			//	positionDataCount += sizeof(float);
+			//}
 			
 			if (currentPosition.x < leftMostX)
 			{
@@ -837,30 +973,33 @@ public class scatterCluster : MonoBehaviour {
 			}
 		}
 		
-		if (!size)
-		{
-			redCube1.localScale = redCube1Scale * (character.position.z - redCube1.position.z) / (character.position.z - maxHeight/2);
-			redCube2.localScale = redCube2Scale * (character.position.z - redCube2.position.z) / (character.position.z - maxHeight/2);
-//			for (int i = 0; i < fragCount; i++)
-//			{
-//				if (cluster[i] != null)
-//				{
-//					cluster[i].localScale = fragment.localScale * clusterScales[i] * (character.position.z - cluster[i].position.z) / (character.position.z - maxHeight/2);
-//				}
-//			}
-		}
-		else
-		{
-			redCube1.localScale = redCube1Scale;
-			redCube2.localScale = redCube2Scale;
-			for (int i = 0; i < fragCount; i++)
-			{
-				if (cluster[i] != null)
-				{
-					cluster[i].localScale = fragment.localScale * clusterScales[i];
-				}
-			}
-		}
+        if (redCube1)
+        {
+            if (!size)
+            {
+                redCube1.localScale = redCube1Scale * (character.position.z - redCube1.position.z) / (character.position.z - maxHeight / 2);
+                redCube2.localScale = redCube2Scale * (character.position.z - redCube2.position.z) / (character.position.z - maxHeight / 2);
+                //			for (int i = 0; i < fragCount; i++)
+                //			{
+                //				if (cluster[i] != null)
+                //				{
+                //					cluster[i].localScale = fragment.localScale * clusterScales[i] * (character.position.z - cluster[i].position.z) / (character.position.z - maxHeight/2);
+                //				}
+                //			}
+            }
+            else
+            {
+                redCube1.localScale = redCube1Scale;
+                redCube2.localScale = redCube2Scale;
+                for (int i = 0; i < fragCount; i++)
+                {
+                    if (cluster[i] != null)
+                    {
+                        cluster[i].localScale = fragment.localScale * clusterScales[i];
+                    }
+                }
+            }
+        }
 		
 		if (Input.GetKeyDown(KeyCode.LeftControl))
 		{
@@ -929,7 +1068,25 @@ public class scatterCluster : MonoBehaviour {
 		{
 			if (!observed && (System.DateTime.Now - clusterTimestamp).TotalSeconds > 0.01)
 			{
-                if ((!currentStaircase.hollow && currentStaircase.uneven) || (currentStaircase.hollow && !currentStaircase.uneven))
+                //if (currentStaircase.currentDistance() >= 0.2)
+                //{
+                //    if (redCube1.position.z <= redCube2.position.z)
+                //    {
+                //        observedResult = true;
+                //    }
+                //    else
+                //    {
+                //        observedResult = false;
+                //    }
+                //}
+                //else
+                //{
+                //    observedResult = (Random.value > 0.5 ? true : false);
+                //}
+                
+                // temparal code, motion means use visibility observer, otherwise use context observer
+                if (!currentStaircase.montion)
+                //if ((!currentStaircase.hollow && currentStaircase.uneven) || (currentStaircase.hollow && !currentStaircase.uneven))
                 {
                     // no visibility cue, now use context cue
 
@@ -944,13 +1101,9 @@ public class scatterCluster : MonoBehaviour {
                     {
                         currentStaircase.feedbackDisagree();
                     }
-                    //Debug.Log(Mathf.Abs(estimate1 - estimate2));
 
                     if (Mathf.Abs(estimate1 - estimate2) <= 0.01 && currentStaircase.simulateAcurity)
                     {
-                        //count++;
-                        //Debug.Log(currentStaircase.currentDistance());
-                        //Debug.Log(count);
                         // if the distance is less than 1cm, then human eye can not distinguish
                         observedResult = (Random.value > 0.5 ? true : false);
                     }
@@ -958,9 +1111,18 @@ public class scatterCluster : MonoBehaviour {
                     {
                         observedResult = (estimate1 < estimate2);
                     }
+
+                    // recordMode
+                    if (Staircase.recordMode)
+                    {
+                        Transform nearCube = redCube1.position.z > redCube2.position.z ? redCube2 : redCube1;
+                        Transform farCube = redCube1 == nearCube ? redCube2 : redCube1;
+                        currentStaircase.recordNearFar(testContextDistance(monoEye, nearCube), testContextDistance(monoEye, farCube));
+                    }
                 }
                 else
                 {
+
                     float left1 = testVisibility(stereo ? leftEye : monoEye, redCube1);
                     float left2 = testVisibility(stereo ? leftEye : monoEye, redCube2);
                     float right1 = testVisibility(stereo ? rightEye : monoEye, redCube1);
@@ -979,7 +1141,17 @@ public class scatterCluster : MonoBehaviour {
 
                     if (leftVisibility == rightVisibility)
                         observedResult = (Random.value > 0.5 ? true : false);
+
+                    // recordMode
+                    if (Staircase.recordMode)
+                    {
+                        Transform nearCube = redCube1.position.z > redCube2.position.z ? redCube2 : redCube1;
+                        Transform farCube = redCube1 == nearCube ? redCube2 : redCube1;
+                        currentStaircase.recordNearFar(testVisibility(monoEye, nearCube), testVisibility(monoEye, farCube));
+                        //currentStaircase.recordNearFar(testBinocularVisibility(leftEye, rightEye, nearCube), testBinocularVisibility(leftEye, rightEye, farCube));
+                    }
                 }
+
                 observed = true;
 			}
 
@@ -1150,10 +1322,5 @@ public class scatterCluster : MonoBehaviour {
 			progress /= staircases.Length;
 			progressDisplay.GetComponent<TextMesh> ().text = string.Format("{0}%", progress*100);
 		}
-	}
-
-	void copyMaterial(GameObject anObject)
-	{
-		anObject.GetComponent<Renderer>().material = new Material (anObject.GetComponent<Renderer>().material);
 	}
 }
